@@ -27,6 +27,11 @@ public:
   void targetPower(bool on);
   void targetPowerCycle(uint16_t off_time=10);
 
+  float readAnalogVoltage(uint16_t pin, float multiplier=1);
+  bool testAnalogVoltage(uint16_t pin, const char *name, float multiplier, float value);
+
+  bool testpins(uint8_t a, uint8_t b, uint8_t *allpins, uint8_t num_allpins);
+
   void setColor(uint32_t color);
   uint32_t Wheel(byte WheelPos);
 
@@ -37,6 +42,9 @@ public:
   //////////////////
   TwoWire *theWire = &Wire;
   uint32_t millis_timestamp = 0;
+
+  float analogRef = 3.3;
+  uint16_t analogBits = 1024;  // 10 bit
 
   int16_t targetPowerPin = -1;
   bool targetPowerPolarity = HIGH;
