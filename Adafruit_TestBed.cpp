@@ -258,7 +258,7 @@ void Adafruit_TestBed::beepNblink(void) {
     digitalWrite(ledPin, HIGH);
   }
 
-  beep(4000, 250);
+  beep(2000, 250);
 
   delay(500);
 
