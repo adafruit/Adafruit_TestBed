@@ -21,6 +21,7 @@ public:
 
   bool testPullup(uint16_t pin, uint8_t inter_delay=1);
 
+  void disableI2C(void);
   bool scanI2CBus(byte addr, uint8_t post_delay=5);
   void printI2CBusScan(void);
   
@@ -34,6 +35,9 @@ public:
 
   void setColor(uint32_t color);
   uint32_t Wheel(byte WheelPos);
+
+  void beep(uint32_t freq, uint32_t duration);
+  void beepNblink(void);
 
   uint32_t timestamp(void);
   void printTimeTaken(bool restamp=false);

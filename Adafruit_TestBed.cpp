@@ -28,9 +28,12 @@ void Adafruit_TestBed::begin(void) {
 
 #if defined(__AVR__)
   analogRef = 5.0;
-#endif
-#if defined(ARDUINO_ARCH_RP2040)
+#elif defined(ARDUINO_ARCH_RP2040)
   analogBits = 4096;
+#elif defined(ARDUINO_ARCH_ESP32)
+  analogBits = 4096;
+  analogReadResolution(12);
+  analogRef = 2.4;
 #endif
 }
 
@@ -100,6 +103,7 @@ void Adafruit_TestBed::targetPowerCycle(uint16_t off_time) {
 
 float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
   float x = analogRead(pin);
+  Serial.println(x);
   x /= analogBits;
   x *= analogRef;
   x *= multiplier;
@@ -136,10 +140,12 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins, uint8_t 
   pinMode(b, INPUT);
   // turn on 'a' pullup
   pinMode(a, INPUT_PULLUP);
-  
+  delay(1);
+
   // verify neither are grounded
   if (! digitalRead(a) || ! digitalRead(b)) {
     Serial.println(F("Ground test 1 fail: both pins should not be grounded"));
+    //while (1) yield();
     return false;
   }
   
@@ -166,10 +172,12 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins, uint8_t 
   pinMode(a, INPUT);
   pinMode(b, OUTPUT);
   digitalWrite(b, HIGH);
-    
+  delay(1);
+
   // verify neither are grounded
   if (! digitalRead(a) || ! digitalRead(b)) {
-    Serial.println(F("Ground test 1 fail: both pins should not be grounded"));
+    Serial.println(F("Ground test 2 fail: both pins should not be grounded"));
+    //while (1) yield();
     return false;
   }
   
@@ -226,6 +234,37 @@ uint32_t Adafruit_TestBed::Wheel(byte WheelPos) {
   }
   WheelPos -= 170;
   return Adafruit_NeoPixel::Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
+
+void Adafruit_TestBed::disableI2C(void) {
+#if defined(__AVR__)
+  TWCR = 0;
+#else
+  theWire->end();
+#endif
+}
+
+void Adafruit_TestBed::beep(uint32_t freq, uint32_t duration) {
+  if (piezoPin < 0) 
+    return;
+  pinMode(piezoPin, OUTPUT);
+  tone(piezoPin, freq, duration);
+}
+
+void Adafruit_TestBed::beepNblink(void) {
+  if (ledPin >= 0) {
+    pinMode(ledPin, OUTPUT);
+    digitalWrite(ledPin, HIGH);
+  }
+
+  beep(4000, 250);
+
+  delay(500);
+
+  if (ledPin >= 0) {
+    digitalWrite(ledPin, LOW);
+  }
 }
 
 Adafruit_TestBed TB;
