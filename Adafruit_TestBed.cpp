@@ -245,6 +245,8 @@ uint32_t Adafruit_TestBed::Wheel(byte WheelPos) {
 void Adafruit_TestBed::disableI2C(void) {
 #if defined(__AVR__)
   TWCR = 0;
+#elif defined(ESP32) || defined(ESP8266)
+  // nothing!
 #else
   theWire->end();
 #endif
