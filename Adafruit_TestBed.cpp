@@ -175,11 +175,11 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
   delay(10);
 
   // verify neither are grounded
-  if (!digitalRead(a) 
+  if (!digitalRead(a)
 #if !defined(ESP32)
       || !digitalRead(b)
 #endif
-    ) {
+  ) {
     Serial.println(F("Ground test 2 fail: both pins should not be grounded"));
     delay(100);
     return false;
