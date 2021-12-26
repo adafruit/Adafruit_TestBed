@@ -73,7 +73,7 @@ bool Adafruit_TestBed::scanI2CBus(byte addr, uint8_t post_delay) {
 void Adafruit_TestBed::printI2CBusScan(void) {
   theWire->begin();
   Serial.print("I2C scan: ");
-  for (uint8_t addr = 0x10; addr <= 0x7F; addr++) {
+  for (uint8_t addr = 0x00; addr <= 0x7F; addr++) {
     theWire->beginTransmission(addr);
     if (theWire->endTransmission() == 0) {
       Serial.print("0x");
@@ -153,6 +153,7 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
   // make a an output
   pinMode(a, OUTPUT);
   digitalWrite(a, LOW);
+  delay(1);
 
   int ar = digitalRead(a);
   int br = digitalRead(b);
@@ -171,12 +172,16 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
   pinMode(a, INPUT);
   pinMode(b, OUTPUT);
   digitalWrite(b, HIGH);
-  delay(1);
+  delay(10);
 
   // verify neither are grounded
-  if (!digitalRead(a) || !digitalRead(b)) {
+  if (!digitalRead(a) 
+#if !defined(ESP32)
+      || !digitalRead(b)
+#endif
+    ) {
     Serial.println(F("Ground test 2 fail: both pins should not be grounded"));
-    // while (1) yield();
+    delay(100);
     return false;
   }
 
@@ -189,6 +194,7 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
   digitalWrite(a, LOW);
   pinMode(b, OUTPUT);
   digitalWrite(b, LOW);
+  delay(1);
 
   for (uint8_t i = 0; i < sizeof(allpins); i++) {
     if ((allpins[i] == a) || (allpins[i] == b)) {
@@ -248,7 +254,9 @@ void Adafruit_TestBed::beep(uint32_t freq, uint32_t duration) {
   if (piezoPin < 0)
     return;
   pinMode(piezoPin, OUTPUT);
+#if !defined(ARDUINO_ARCH_ESP32)
   tone(piezoPin, freq, duration);
+#endif
 }
 
 void Adafruit_TestBed::beepNblink(void) {
