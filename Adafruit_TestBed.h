@@ -44,23 +44,24 @@ public:
   void printTimeTaken(bool restamp = false);
 
   //////////////////
-  TwoWire *theWire = &Wire;   ///< The I2C port used in scanning
+  TwoWire *theWire = &Wire; ///< The I2C port used in scanning
 
   float analogRef = 3.3;      ///< The default analog reference voltage
   uint16_t analogBits = 1024; ///< The default ADC resolution bits
 
-  int16_t targetPowerPin = -1;  ///< Set to a target power pin if used
+  int16_t targetPowerPin = -1;     ///< Set to a target power pin if used
   bool targetPowerPolarity = HIGH; ///< What to set the power pin to, for ON
 
   int16_t neopixelPin = -1; ///< The neopixel connected pin if any
-  uint8_t neopixelNum = 0; ///< How many neopixels are on board, if any
-  Adafruit_NeoPixel *pixels = NULL; ///< The strip we will auto-define if pixels exist
+  uint8_t neopixelNum = 0;  ///< How many neopixels are on board, if any
+  Adafruit_NeoPixel *pixels =
+      NULL; ///< The strip we will auto-define if pixels exist
 
   int16_t piezoPin = -1; ///< The pin for a piezo buzzer, if it exists
-  int16_t ledPin = -1; ///< The pin for an LED, if it exists
+  int16_t ledPin = -1;   ///< The pin for an LED, if it exists
 
- private:
-  uint32_t millis_timestamp = 0;  ///< A general purpose timestamp
+private:
+  uint32_t millis_timestamp = 0; ///< A general purpose timestamp
 };
 
 #endif

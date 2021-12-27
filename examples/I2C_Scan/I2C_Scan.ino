@@ -3,6 +3,7 @@ extern Adafruit_TestBed TB;
 
 #define DEFAULT_I2C_PORT &Wire
 
+// Some boards have TWO I2C ports, how nifty. We should scan both
 #if defined(ARDUINO_ADAFRUIT_KB2040_RP2040) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2)
   #define SECONDARY_I2C_PORT &Wire1
@@ -22,6 +23,12 @@ void setup() {
   // ESP32 is kinda odd in that secondary ports must be manually
   // assigned their pins with setPins()!
   Wire1.setPins(SDA1, SCL1);
+#endif
+
+#if defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2)
+  // turn on the I2C power by setting pin
+  pinMode(7, OUTPUT);
+  digitalWrite(7, LOW);
 #endif
 }
 
