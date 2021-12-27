@@ -1,11 +1,10 @@
 #include <Adafruit_TestBed.h>
 extern Adafruit_TestBed TB;
 
-// This is almost always the default I2C port
 #define DEFAULT_I2C_PORT &Wire
 
-// Some boards have a second I2C port
-#if defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
+#if defined(ARDUINO_ADAFRUIT_KB2040_RP2040) \
+    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2)
   #define SECONDARY_I2C_PORT &Wire1
 #endif
 
@@ -18,6 +17,12 @@ void setup() {
   }
   delay(500);
   Serial.println("Adafruit I2C Scanner");
+
+#if defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2)
+  // ESP32 is kinda odd in that secondary ports must be manually
+  // assigned their pins with setPins()!
+  Wire1.setPins(SDA1, SCL1);
+#endif
 }
 
 void loop() {
