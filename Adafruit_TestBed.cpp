@@ -7,6 +7,12 @@ Adafruit_TestBed::Adafruit_TestBed(void) {
 #endif
 }
 
+/**************************************************************************/
+/*!
+    @brief  Initializer, sets up the timestamp, neopixels, piezo, led,
+            and analog reference. So get all pins assigned before calling
+*/
+/**************************************************************************/
 void Adafruit_TestBed::begin(void) {
   millis_timestamp = millis();
 
@@ -38,12 +44,24 @@ void Adafruit_TestBed::begin(void) {
 #endif
 }
 
+/**************************************************************************/
+/*!
+    @brief  Sets a timestamp and returns time since last call
+    @return Time elapsed since last time this function called, in milliseconds
+*/
+/**************************************************************************/
 uint32_t Adafruit_TestBed::timestamp(void) {
   uint32_t delta = millis() - millis_timestamp;
   millis_timestamp = millis();
   return delta;
 }
 
+/**************************************************************************/
+/*!
+    @brief  Pretty printer for timestamp
+    @param    restamp Pass in true to reset the timestamp on call.
+*/
+/**************************************************************************/
 void Adafruit_TestBed::printTimeTaken(bool restamp) {
   Serial.print(F("Took: "));
   Serial.print(millis() - millis_timestamp);
@@ -53,6 +71,14 @@ void Adafruit_TestBed::printTimeTaken(bool restamp) {
   }
 }
 
+/**************************************************************************/
+/*!
+    @brief  Sets a pin to be a low output, then set input to see if it rises
+    @param    pin The GPIO to use
+    @param    inter_delay How long to wait in ms for the pin to rise
+    @return True if there was a pullup detected on this pin
+*/
+/**************************************************************************/
 bool Adafruit_TestBed::testPullup(uint16_t pin, uint8_t inter_delay) {
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
@@ -62,6 +88,14 @@ bool Adafruit_TestBed::testPullup(uint16_t pin, uint8_t inter_delay) {
   return (digitalRead(pin));
 }
 
+/**************************************************************************/
+/*!
+    @brief  Perform a I2C scan for a given address on the bus
+    @param    addr The address to look for
+    @param    post_delay How many ms to wait after a scan
+    @return True if the address was found
+*/
+/**************************************************************************/
 bool Adafruit_TestBed::scanI2CBus(byte addr, uint8_t post_delay) {
   theWire->begin();
   theWire->beginTransmission(addr);
@@ -70,6 +104,11 @@ bool Adafruit_TestBed::scanI2CBus(byte addr, uint8_t post_delay) {
   return found;
 }
 
+/**************************************************************************/
+/*!
+    @brief  Perform a I2C scan for 0x00-0x7F and print results
+*/
+/**************************************************************************/
 void Adafruit_TestBed::printI2CBusScan(void) {
   theWire->begin();
   Serial.print("I2C scan: ");
@@ -84,6 +123,12 @@ void Adafruit_TestBed::printI2CBusScan(void) {
   Serial.println();
 }
 
+/**************************************************************************/
+/*!
+    @brief  Turn on the target by setting the power pin active
+    @param  on What value to set the pin to be powered
+*/
+/**************************************************************************/
 void Adafruit_TestBed::targetPower(bool on) {
   if (targetPowerPin < 0)
     return;
@@ -92,12 +137,26 @@ void Adafruit_TestBed::targetPower(bool on) {
   digitalWrite(targetPowerPin, on ? targetPowerPolarity : !targetPowerPolarity);
 }
 
+/**************************************************************************/
+/*!
+    @brief  Cycle the target power pin
+    @param  off_time How many ms to wait between off and back on
+*/
+/**************************************************************************/
 void Adafruit_TestBed::targetPowerCycle(uint16_t off_time) {
   targetPower(0);
   delay(off_time);
   targetPower(1);
 }
 
+/**************************************************************************/
+/*!
+    @brief  Read the ADC on a pin and convert it to a voltage
+    @param  pin The ADC pin to read on
+    @param  multiplier If there's a resistor divider, put the inverse here
+    @return Voltage as a floating point
+*/
+/**************************************************************************/
 float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
   float x = analogRead(pin);
   Serial.println(x);
@@ -107,6 +166,16 @@ float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
   return x;
 }
 
+/**************************************************************************/
+/*!
+    @brief  Perform a test of a pin's analog voltage, within 10%
+    @param  pin The ADC pin to read on
+    @param  name Human readable name for the pin
+    @param  multiplier If there's a resistor divider, put the inverse here
+    @param  value What voltage the pin should be
+    @return True if the pin voltage is within 10% of target
+*/
+/**************************************************************************/
 bool Adafruit_TestBed::testAnalogVoltage(uint16_t pin, const char *name,
                                          float multiplier, float value) {
   float voltage = readAnalogVoltage(pin, multiplier);
@@ -125,6 +194,17 @@ bool Adafruit_TestBed::testAnalogVoltage(uint16_t pin, const char *name,
   return true;
 }
 
+/**************************************************************************/
+/*!
+    @brief  Perform a test of two connected GPIO pins
+    @param  a The first pin
+    @param  b The second pin
+    @param  allpins An array of uint8_t's of all pins that are tested against a
+   and b
+    @param  num_allpins The length of allpins array
+    @return True if the pins are shorted together but not to any other pins
+*/
+/**************************************************************************/
 bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
                                 uint8_t num_allpins) {
 
@@ -219,6 +299,12 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
   return true;
 }
 
+/**************************************************************************/
+/*!
+    @brief  Set the NeoPixels to a set color and show
+    @param  color The 0xRRGGBB color to set to
+*/
+/**************************************************************************/
 void Adafruit_TestBed::setColor(uint32_t color) {
   if (!pixels)
     return;
@@ -227,8 +313,14 @@ void Adafruit_TestBed::setColor(uint32_t color) {
   pixels->show();
 }
 
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
+/**************************************************************************/
+/*!
+    @brief   Input a value 0 to 255 to get a color value. The colours are a
+   transition r - g - b - back to r.
+    @param  WheelPos The position in the wheel, from 0 to 255
+    @returns  The 0xRRGGBB color
+*/
+/**************************************************************************/
 uint32_t Adafruit_TestBed::Wheel(byte WheelPos) {
   WheelPos = 255 - WheelPos;
   if (WheelPos < 85) {
@@ -242,6 +334,11 @@ uint32_t Adafruit_TestBed::Wheel(byte WheelPos) {
   return Adafruit_NeoPixel::Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
+/**************************************************************************/
+/*!
+    @brief   Turn off I2C peripheral if possible (not supported on some chips)
+*/
+/**************************************************************************/
 void Adafruit_TestBed::disableI2C(void) {
 #if defined(__AVR__)
   TWCR = 0;
@@ -252,6 +349,13 @@ void Adafruit_TestBed::disableI2C(void) {
 #endif
 }
 
+/**************************************************************************/
+/*!
+    @brief  Perform a beep on the piezoPin if defined
+    @param  freq Desired tone frequency
+    @param  duration Length of beep in ms
+*/
+/**************************************************************************/
 void Adafruit_TestBed::beep(uint32_t freq, uint32_t duration) {
   if (piezoPin < 0)
     return;
@@ -261,6 +365,12 @@ void Adafruit_TestBed::beep(uint32_t freq, uint32_t duration) {
 #endif
 }
 
+/**************************************************************************/
+/*!
+    @brief  Perform a 250ms 2KHz beep on the piezoPin, and light the LED for
+   500ms, if defined
+*/
+/**************************************************************************/
 void Adafruit_TestBed::beepNblink(void) {
   if (ledPin >= 0) {
     pinMode(ledPin, OUTPUT);

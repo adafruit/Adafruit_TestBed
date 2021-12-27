@@ -13,7 +13,12 @@
 #define PURPLE 0xFF00FF
 #define WHITE 0xFFFFFF
 
-///< A helper class for making test beds and functions. Lots of handy lil tools!
+/**************************************************************************/
+/*!
+    @brief A helper class for making test beds and functions. Lots of handy lil
+   tools!
+*/
+/**************************************************************************/
 class Adafruit_TestBed {
 public:
   Adafruit_TestBed(void);
