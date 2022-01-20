@@ -5,7 +5,8 @@ extern Adafruit_TestBed TB;
 
 // Some boards have TWO I2C ports, how nifty. We should scan both
 #if defined(ARDUINO_ADAFRUIT_KB2040_RP2040) \
-    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2)
+    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) \
+    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO)
   #define SECONDARY_I2C_PORT &Wire1
 #endif
 
@@ -19,7 +20,8 @@ void setup() {
   delay(500);
   Serial.println("Adafruit I2C Scanner");
 
-#if defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2)
+#if defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) || \
+    defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO)
   // ESP32 is kinda odd in that secondary ports must be manually
   // assigned their pins with setPins()!
   Wire1.setPins(SDA1, SCL1);
