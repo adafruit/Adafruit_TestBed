@@ -5,6 +5,7 @@ extern Adafruit_TestBed TB;
 
 // Some boards have TWO I2C ports, how nifty. We should scan both
 #if defined(ARDUINO_ADAFRUIT_KB2040_RP2040) \
+    || defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO)
   #define SECONDARY_I2C_PORT &Wire1
