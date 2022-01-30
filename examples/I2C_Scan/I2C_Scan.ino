@@ -9,8 +9,7 @@ extern Adafruit_TestBed TB;
     || defined(ARDUINO_ADAFRUIT_QTPY_RP2040) \
     || defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) \
-    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO) \
-    || defined(ARDUINO_ADAFRUIT_QTPY_RP2040)
+    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO)
   #define SECONDARY_I2C_PORT &Wire1
 #endif
 
