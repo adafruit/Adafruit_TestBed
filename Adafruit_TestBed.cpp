@@ -161,7 +161,6 @@ float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
   float a = analogRead(pin);
   Serial.println(a);
 
-
 #if defined(ARDUINO_ARCH_ESP32)
   if (a > 3000) {
     a = 0.0005 * a + 1.0874;
