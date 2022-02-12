@@ -40,7 +40,7 @@ void Adafruit_TestBed::begin(void) {
 #elif defined(ARDUINO_ARCH_ESP32)
   analogBits = 4096;
   analogReadResolution(12);
-  analogRef = 2.4;
+  analogRef = 3.3;
 #endif
 }
 
@@ -158,12 +158,23 @@ void Adafruit_TestBed::targetPowerCycle(uint16_t off_time) {
 */
 /**************************************************************************/
 float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
-  float x = analogRead(pin);
-  Serial.println(x);
-  x /= analogBits;
-  x *= analogRef;
-  x *= multiplier;
-  return x;
+  float a = analogRead(pin);
+  Serial.println(a);
+
+
+#if defined(ARDUINO_ARCH_ESP32)
+  if (a > 3000) {
+    a = 0.0005 * a + 1.0874;
+  } else {
+    a = 0.0008 * a + 0.1372;
+  }
+#else
+  a /= analogBits;
+  a *= analogRef;
+#endif
+  a *= multiplier;
+
+  return a;
 }
 
 /**************************************************************************/
@@ -384,6 +395,9 @@ void Adafruit_TestBed::beepNblink(void) {
   if (ledPin >= 0) {
     digitalWrite(ledPin, LOW);
   }
+#if !defined(ARDUINO_ARCH_ESP32)
+  noTone(piezoPin);
+#endif
 }
 
 Adafruit_TestBed TB;
