@@ -44,6 +44,11 @@ void setup() {
   digitalWrite(TFT_I2C_POWER, HIGH);
 #endif
 
+#if defined(ADAFRUIT_FEATHER_ESP32_V2)
+  // Turn on the I2C power by pulling pin HIGH.
+  pinMode(NEOPIXEL_I2C_POWER, OUTPUT);
+  digitalWrite(NEOPIXEL_I2C_POWER, HIGH);
+#endif
 }
 
 void loop() {

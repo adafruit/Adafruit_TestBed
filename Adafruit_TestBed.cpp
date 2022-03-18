@@ -161,7 +161,7 @@ float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
   float a = analogRead(pin);
   Serial.println(a);
 
-#if defined(ARDUINO_ARCH_ESP32)
+#if defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ADAFRUIT_QTPY_ESP32C3)
   if (a > 3000) {
     a = 0.0005 * a + 1.0874;
   } else {
@@ -232,7 +232,7 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
   // verify neither are grounded
   if (!digitalRead(a) || !digitalRead(b)) {
     Serial.println(F("Ground test 1 fail: both pins should not be grounded"));
-    // while (1) yield();
+     while (1) yield();
     return false;
   }
 
