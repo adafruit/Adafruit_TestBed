@@ -38,6 +38,12 @@ void setup() {
   pinMode(PIN_I2C_POWER, OUTPUT);
   digitalWrite(PIN_I2C_POWER, !polarity);
 #endif
+
+#if defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2_TFT)
+  pinMode(TFT_I2C_POWER, OUTPUT);
+  digitalWrite(TFT_I2C_POWER, HIGH);
+#endif
+
 }
 
 void loop() {
