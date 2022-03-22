@@ -22,12 +22,14 @@ void loop(void) {
 
   if (! TB.testPullup(A5) || ! TB.testPullup(A4)) {
     Serial.println("Waiting for I2C pullups");
+    return;
   }
 
   Serial.println("I2C pullups OK");  // pullups cool - next up!
 
   if (!TB.scanI2CBus(0x62)) {
     Serial.println("I2C 0x62 not found");
+    return;
   }
   Serial.println("I2C 0x62 found");
 
