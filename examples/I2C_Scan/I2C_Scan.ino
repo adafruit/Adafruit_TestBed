@@ -58,12 +58,12 @@ void loop() {
   Serial.println("");
   Serial.println("");
 
-  Serial.print("Default port ");
+  Serial.print("Default port (Wire) ");
   TB.theWire = DEFAULT_I2C_PORT;
   TB.printI2CBusScan();
 
 #if defined(SECONDARY_I2C_PORT)
-  Serial.print("Secondary port ");
+  Serial.print("Secondary port (Wire1) ");
   TB.theWire = SECONDARY_I2C_PORT;
   TB.printI2CBusScan();
 #endif
