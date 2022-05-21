@@ -371,8 +371,12 @@ void Adafruit_TestBed::beep(uint32_t freq, uint32_t duration) {
   if (piezoPin < 0)
     return;
   pinMode(piezoPin, OUTPUT);
-#if !defined(ARDUINO_ARCH_ESP32)
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_SAM_DUE)
   tone(piezoPin, freq, duration);
+#else
+  // suppress compiler warns
+  (void)freq;
+  (void)duration;
 #endif
 }
 
@@ -395,7 +399,7 @@ void Adafruit_TestBed::beepNblink(void) {
   if (ledPin >= 0) {
     digitalWrite(ledPin, LOW);
   }
-#if !defined(ARDUINO_ARCH_ESP32)
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_SAM_DUE)
   noTone(piezoPin);
 #endif
 }

@@ -10,13 +10,14 @@ extern Adafruit_TestBed TB;
     || defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3_NOPSRAM) \
-    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO)
+    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO) \
+    || defined(ARDUINO_SAM_DUE)
   #define SECONDARY_I2C_PORT &Wire1
 #endif
 
 void setup() {
   Serial.begin(115200);
-  
+
   // Wait for Serial port to open
   while (!Serial) {
     delay(10);
@@ -56,13 +57,13 @@ void setup() {
 void loop() {
   Serial.println("");
   Serial.println("");
-  
-  Serial.print("Default port ");
+
+  Serial.print("Default port (Wire) ");
   TB.theWire = DEFAULT_I2C_PORT;
   TB.printI2CBusScan();
 
 #if defined(SECONDARY_I2C_PORT)
-  Serial.print("Secondary port ");
+  Serial.print("Secondary port (Wire1) ");
   TB.theWire = SECONDARY_I2C_PORT;
   TB.printI2CBusScan();
 #endif
