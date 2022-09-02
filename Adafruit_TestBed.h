@@ -50,6 +50,7 @@ public:
 
   //////////////////
   TwoWire *theWire = &Wire; ///< The I2C port used in scanning
+  Stream  *theSerial = &Serial; ///< The Serial port used for debugging
 
   float analogRef = 3.3;      ///< The default analog reference voltage
   uint16_t analogBits = 1024; ///< The default ADC resolution bits

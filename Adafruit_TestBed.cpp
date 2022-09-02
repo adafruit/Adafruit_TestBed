@@ -63,9 +63,9 @@ uint32_t Adafruit_TestBed::timestamp(void) {
 */
 /**************************************************************************/
 void Adafruit_TestBed::printTimeTaken(bool restamp) {
-  Serial.print(F("Took: "));
-  Serial.print(millis() - millis_timestamp);
-  Serial.println(F(" ms"));
+  theSerial->print(F("Took: "));
+  theSerial->print(millis() - millis_timestamp);
+  theSerial->println(F(" ms"));
   if (restamp) {
     timestamp();
   }
@@ -111,16 +111,16 @@ bool Adafruit_TestBed::scanI2CBus(byte addr, uint8_t post_delay) {
 /**************************************************************************/
 void Adafruit_TestBed::printI2CBusScan(void) {
   theWire->begin();
-  Serial.print("I2C scan: ");
+  theSerial->print("I2C scan: ");
   for (uint8_t addr = 0x00; addr <= 0x7F; addr++) {
     theWire->beginTransmission(addr);
     if (theWire->endTransmission() == 0) {
-      Serial.print("0x");
-      Serial.print(addr, HEX);
-      Serial.print(", ");
+      theSerial->print("0x");
+      theSerial->print(addr, HEX);
+      theSerial->print(", ");
     }
   }
-  Serial.println();
+  theSerial->println();
 }
 
 /**************************************************************************/
@@ -159,7 +159,7 @@ void Adafruit_TestBed::targetPowerCycle(uint16_t off_time) {
 /**************************************************************************/
 float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
   float a = analogRead(pin);
-  Serial.println(a);
+  theSerial->println(a);
 
 #if defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ADAFRUIT_QTPY_ESP32C3)
   if (a > 3000) {
@@ -189,17 +189,17 @@ float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
 bool Adafruit_TestBed::testAnalogVoltage(uint16_t pin, const char *name,
                                          float multiplier, float value) {
   float voltage = readAnalogVoltage(pin, multiplier);
-  Serial.print(name);
-  Serial.print(F(" output voltage: "));
-  Serial.print(voltage);
-  Serial.print(F(" V (should be "));
-  Serial.print(value);
-  Serial.print(" V)...");
+  theSerial->print(name);
+  theSerial->print(F(" output voltage: "));
+  theSerial->print(voltage);
+  theSerial->print(F(" V (should be "));
+  theSerial->print(value);
+  theSerial->print(" V)...");
   if (abs(voltage - value) > (value / 10.0)) {
-    Serial.println("Failed");
+    theSerial->println("Failed");
     return false;
   }
-  Serial.println(F("OK within 10%"));
+  theSerial->println(F("OK within 10%"));
 
   return true;
 }
@@ -218,10 +218,10 @@ bool Adafruit_TestBed::testAnalogVoltage(uint16_t pin, const char *name,
 bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
                                 uint8_t num_allpins) {
 
-  Serial.print(F("\tTesting "));
-  Serial.print(a, DEC);
-  Serial.print(F(" & "));
-  Serial.println(b, DEC);
+  theSerial->print(F("\tTesting "));
+  theSerial->print(a, DEC);
+  theSerial->print(F(" & "));
+  theSerial->println(b, DEC);
 
   // set both to inputs
   pinMode(b, INPUT);
@@ -231,9 +231,7 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
 
   // verify neither are grounded
   if (!digitalRead(a) || !digitalRead(b)) {
-    Serial.println(F("Ground test 1 fail: both pins should not be grounded"));
-    while (1)
-      yield();
+    theSerial->println(F("Ground test 1 fail: both pins should not be grounded"));
     return false;
   }
 
@@ -251,11 +249,11 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
 
   // make sure both are low
   if (ar || br) {
-    Serial.print(F("Low test fail on "));
+    theSerial->print(F("Low test fail on "));
     if (br)
-      Serial.println(b, DEC);
+      theSerial->println(b, DEC);
     if (ar)
-      Serial.println(a, DEC);
+      theSerial->println(a, DEC);
     return false;
   }
 
@@ -271,7 +269,7 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
       || !digitalRead(b)
 #endif
   ) {
-    Serial.println(F("Ground test 2 fail: both pins should not be grounded"));
+    theSerial->println(F("Ground test 2 fail: both pins should not be grounded"));
     delay(100);
     return false;
   }
@@ -292,12 +290,12 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
       continue;
     }
 
-    // Serial.print("Pin #"); Serial.print(allpins[i]);
-    // Serial.print(" -> ");
-    // Serial.println(digitalRead(allpins[i]));
+    // theSerial->print("Pin #"); theSerial->print(allpins[i]);
+    // theSerial->print(" -> ");
+    // theSerial->println(digitalRead(allpins[i]));
     if (!digitalRead(allpins[i])) {
-      Serial.print(allpins[i]);
-      Serial.println(F(" is shorted?"));
+      theSerial->print(allpins[i]);
+      theSerial->println(F(" is shorted?"));
 
       return false;
     }
@@ -392,7 +390,7 @@ void Adafruit_TestBed::beepNblink(void) {
     digitalWrite(ledPin, HIGH);
   }
 
-  beep(2000, 250);
+  beep(4000, 250);
 
   delay(500);
 
