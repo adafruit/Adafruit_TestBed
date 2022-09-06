@@ -10,6 +10,7 @@ extern Adafruit_TestBed TB;
     || defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3_NOPSRAM) \
+    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO) \
     || defined(ARDUINO_SAM_DUE)
   #define SECONDARY_I2C_PORT &Wire1
@@ -27,6 +28,7 @@ void setup() {
 
 #if defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) || \
     defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3_NOPSRAM) || \
+    defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3) || \
     defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO)
   // ESP32 is kinda odd in that secondary ports must be manually
   // assigned their pins with setPins()!

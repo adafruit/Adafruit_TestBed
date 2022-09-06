@@ -285,7 +285,7 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
   digitalWrite(b, LOW);
   delay(1);
 
-  for (uint8_t i = 0; i < sizeof(allpins); i++) {
+  for (uint8_t i = 0; i < num_allpins; i++) {
     if ((allpins[i] == a) || (allpins[i] == b)) {
       continue;
     }
