@@ -231,7 +231,8 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
 
   // verify neither are grounded
   if (!digitalRead(a) || !digitalRead(b)) {
-    theSerial->println(F("Ground test 1 fail: both pins should not be grounded"));
+    theSerial->println(
+        F("Ground test 1 fail: both pins should not be grounded"));
     return false;
   }
 
@@ -269,7 +270,8 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
       || !digitalRead(b)
 #endif
   ) {
-    theSerial->println(F("Ground test 2 fail: both pins should not be grounded"));
+    theSerial->println(
+        F("Ground test 2 fail: both pins should not be grounded"));
     delay(100);
     return false;
   }
