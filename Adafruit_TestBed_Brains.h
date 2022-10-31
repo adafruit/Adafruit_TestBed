@@ -18,8 +18,12 @@ public:
   LiquidCrystal lcd = LiquidCrystal(7, 8, 9, 10, 11, 12);
   void LCD_printf(bool linenum, const char format[], ...);
 
-private:
+  bool SD_detected(void);
 
+  SdFs SD;
+  SdSpiConfig SD_CONFIG = SdSpiConfig(17, SHARED_SPI, SD_SCK_MHZ(16));
+
+private:
 };
 
 #endif
