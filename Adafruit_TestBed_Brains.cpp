@@ -10,8 +10,6 @@
 /**************************************************************************/
 
 Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
-  neopixelNum = 1;  // LCD backlight
-  neopixelPin = 13; // LCD backlight
 
   piezoPin = 15; // onboard buzzer
   ledPin = 25;   // green LED on Pico
@@ -21,6 +19,17 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
 
 void Adafruit_TestBed_Brains::begin(void) {
   Adafruit_TestBed::begin();
+
+  neopixelNum = 1;  // LCD backlight
+  neopixelPin = 13; // LCD backlight
+
+  pixels =
+        new Adafruit_NeoPixel(neopixelNum, neopixelPin, NEO_RGB + NEO_KHZ800);
+  pixels->begin();
+  pixels->show(); // Initialize all pixels to 'off'
+  pixels->setBrightness(20);
+
+  analogReadResolution(12);
 
   pixels->setBrightness(255);
   setColor(0xFFFFFF);
@@ -61,6 +70,9 @@ void Adafruit_TestBed_Brains::LCD_printf(bool linenum, const char format[], ...)
   lcd.setCursor(0, linenum);
   lcd.write(linebuf);
   va_end(ap);
+
+  Serial.print("LCD: "); Serial.println(linebuf);
+
 }
 
 
@@ -69,5 +81,18 @@ bool Adafruit_TestBed_Brains::SD_detected(void) {
   return digitalRead(14);
 }
 
+
+void Adafruit_TestBed_Brains::LCD_info(const char *msg1, const char *msg2) {
+  setColor(0xFFFFFF);
+  LCD_printf(0, msg1);
+  LCD_printf(1, msg2);
+}
+
+void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1, const char *errmsg2) {
+  setColor(0xFF0000);
+  LCD_printf(0, errmsg1);
+  LCD_printf(1, errmsg2);
+  delay(250);
+}
 
 Adafruit_TestBed_Brains Brain;

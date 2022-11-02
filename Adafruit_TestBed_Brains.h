@@ -17,6 +17,8 @@ public:
 
   LiquidCrystal lcd = LiquidCrystal(7, 8, 9, 10, 11, 12);
   void LCD_printf(bool linenum, const char format[], ...);
+  void LCD_error(const char *errmsg1, const char *errmsg2);
+  void LCD_info(const char *msg1, const char *msg2);
 
   bool SD_detected(void);
 
