@@ -1,3 +1,5 @@
+#ifdef ARDUINO_ARCH_RP2040
+
 #include "Adafruit_TestBed_Brains.h"
 
 
@@ -96,3 +98,6 @@ void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1, const char *errmsg2
 }
 
 Adafruit_TestBed_Brains Brain;
+
+
+#endif
