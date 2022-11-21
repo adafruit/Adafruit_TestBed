@@ -101,7 +101,7 @@ bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
 
 void Adafruit_TestBed_Brains::LCD_printf(bool linenum, const char format[], ...) {
   char linebuf[17];
-  memset(linebuf, 0, 17);
+  memset(linebuf, 0, sizeof(linebuf));
 
   va_list ap;
   va_start(ap, format);
