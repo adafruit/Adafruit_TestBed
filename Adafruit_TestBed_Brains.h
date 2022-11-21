@@ -6,6 +6,9 @@
 #include "Adafruit_TestBed.h"
 #include <SdFat.h>
 #include <LiquidCrystal.h>
+#include "Adafruit_TinyUSB.h"
+
+//class Adafruit_InternalFlash : public FsBlockDeviceInterface { }
 
 /**************************************************************************/
 /*!
@@ -32,6 +35,7 @@ public:
   SdSpiConfig SD_CONFIG = SdSpiConfig(17, SHARED_SPI, SD_SCK_MHZ(16));
 
   Adafruit_USBH_Host USBHost;
+
 
 private:
   int _sd_detect_pin;

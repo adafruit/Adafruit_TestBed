@@ -26,7 +26,6 @@
 
 #include "Adafruit_TestBed_Brains.h"
 #include "pio_usb.h"
-#include "Adafruit_TinyUSB.h"
 
 #define USBHOST_RHPORT    1
 
