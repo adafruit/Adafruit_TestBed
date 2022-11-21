@@ -24,10 +24,12 @@
 
 #ifdef ARDUINO_ARCH_RP2040
 
-#include "Adafruit_TestBed_Brains.h"
+#include "Arduino.h"
 #include "pio_usb.h"
 
-#define USBHOST_RHPORT    1
+#include "Adafruit_TestBed_Brains.h"
+
+#define USBHOST_RHPORT 1
 
 Adafruit_TestBed_Brains Brain;
 
@@ -43,13 +45,13 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
   piezoPin = 15; // onboard buzzer
   ledPin = 25;   // green LED on Pico
 
-  targetPowerPin = 6;  // VBat switch
+  targetPowerPin = 6; // VBat switch
 
   neopixelNum = 1;  // LCD backlight
   neopixelPin = 13; // LCD backlight
 
   _sd_detect_pin = 14; // SD detect
-  _sd_cs_pin = 17; // SD chip select
+  _sd_cs_pin = 17;     // SD chip select
 
   _usbh_dp_pin = 20; // USB Host D+
   _vbus_en_pin = 22; // USB Host VBus enable
@@ -73,21 +75,21 @@ void Adafruit_TestBed_Brains::begin(void) {
   lcd.home();
   lcd.noCursor();
 
-//  if (SD_detected()) {
-//    Serial.print("SD inserted...");
-//    if (!SD_begin()) {
-//      Serial.println("Could not init SD!");
-//    } else {
-//      uint32_t SDsize = SD.card()->sectorCount();
-//      if (SDsize == 0) {
-//        Serial.println("Can't determine the card size");
-//      } else {
-//        Serial.printf("Card size = %0.1f GB\n", 0.000000512 * (float)SDsize);
-//        Serial.println("Files found (date time size name):");
-//        SD.ls(LS_R | LS_DATE | LS_SIZE);
-//      }
-//    }
-//  }
+  //  if (SD_detected()) {
+  //    Serial.print("SD inserted...");
+  //    if (!SD_begin()) {
+  //      Serial.println("Could not init SD!");
+  //    } else {
+  //      uint32_t SDsize = SD.card()->sectorCount();
+  //      if (SDsize == 0) {
+  //        Serial.println("Can't determine the card size");
+  //      } else {
+  //        Serial.printf("Card size = %0.1f GB\n", 0.000000512 *
+  //        (float)SDsize); Serial.println("Files found (date time size
+  //        name):"); SD.ls(LS_R | LS_DATE | LS_SIZE);
+  //      }
+  //    }
+  //  }
 }
 
 bool Adafruit_TestBed_Brains::SD_detected(void) {
@@ -98,7 +100,8 @@ bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
   return SD.begin(_sd_cs_pin, max_clock);
 }
 
-void Adafruit_TestBed_Brains::LCD_printf(bool linenum, const char format[], ...) {
+void Adafruit_TestBed_Brains::LCD_printf(bool linenum, const char format[],
+                                         ...) {
   char linebuf[17];
   memset(linebuf, 0, sizeof(linebuf));
 
@@ -107,13 +110,14 @@ void Adafruit_TestBed_Brains::LCD_printf(bool linenum, const char format[], ...)
   vsnprintf(linebuf, sizeof(linebuf), format, ap);
 
   // fill the rest with spaces
-  memset(linebuf+strlen(linebuf), ' ', 16 - strlen(linebuf));
+  memset(linebuf + strlen(linebuf), ' ', 16 - strlen(linebuf));
   linebuf[16] = 0;
   lcd.setCursor(0, linenum);
   lcd.write(linebuf);
   va_end(ap);
 
-  Serial.print("LCD: "); Serial.println(linebuf);
+  Serial.print("LCD: ");
+  Serial.println(linebuf);
 }
 
 void Adafruit_TestBed_Brains::LCD_info(const char *msg1, const char *msg2) {
@@ -122,7 +126,8 @@ void Adafruit_TestBed_Brains::LCD_info(const char *msg1, const char *msg2) {
   LCD_printf(1, msg2);
 }
 
-void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1, const char *errmsg2) {
+void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1,
+                                        const char *errmsg2) {
   setColor(0xFF0000);
   LCD_printf(0, errmsg1);
   LCD_printf(1, errmsg2);
@@ -136,11 +141,17 @@ void Adafruit_TestBed_Brains::usbh_setVBus(bool en) {
 bool Adafruit_TestBed_Brains::usbh_begin(void) {
   // Check for CPU frequency, must be multiple of 120Mhz for bit-banging USB
   uint32_t cpu_hz = clock_get_hz(clk_sys);
-  if ( cpu_hz != 120000000UL && cpu_hz != 240000000UL ) {
-    while ( !Serial ) delay(10);   // wait for native usb
-    Serial.printf("Error: CPU Clock = %u, PIO USB require CPU clock must be multiple of 120 Mhz\r\n", cpu_hz);
-    Serial.printf("Change your CPU Clock to either 120 or 240 Mhz in Menu->CPU Speed \r\n", cpu_hz);
-    while(1) delay(1);
+  if (cpu_hz != 120000000UL && cpu_hz != 240000000UL) {
+    while (!Serial)
+      delay(10); // wait for native usb
+    Serial.printf("Error: CPU Clock = %u, PIO USB require CPU clock must be "
+                  "multiple of 120 Mhz\r\n",
+                  cpu_hz);
+    Serial.printf("Change your CPU Clock to either 120 or 240 Mhz in Menu->CPU "
+                  "Speed \r\n",
+                  cpu_hz);
+    while (1)
+      delay(1);
   }
 
   // enable vbus
@@ -148,10 +159,10 @@ bool Adafruit_TestBed_Brains::usbh_begin(void) {
   usbh_setVBus(true);
 
   pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-  pio_cfg.pin_dp = (uint8_t) _usbh_dp_pin;
+  pio_cfg.pin_dp = (uint8_t)_usbh_dp_pin;
 
   USBHost.configure_pio_usb(USBHOST_RHPORT, &pio_cfg);
-  if (!USBHost.begin(USBHOST_RHPORT))  {
+  if (!USBHost.begin(USBHOST_RHPORT)) {
     Serial.println("usb host begin failed");
     usbh_setVBus(false);
     return false;

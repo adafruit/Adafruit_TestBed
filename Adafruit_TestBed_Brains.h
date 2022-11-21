@@ -4,18 +4,18 @@
 #ifdef ARDUINO_ARCH_RP2040
 
 #include "Adafruit_TestBed.h"
-#include <SdFat.h>
-#include <LiquidCrystal.h>
 #include "Adafruit_TinyUSB.h"
+#include <LiquidCrystal.h>
+#include <SdFat.h>
 
-//class Adafruit_InternalFlash : public FsBlockDeviceInterface { }
+// class Adafruit_InternalFlash : public FsBlockDeviceInterface { }
 
 /**************************************************************************/
 /*!
     @brief A helper class for making RP2040 "Tester Brains"
 */
 /**************************************************************************/
-class Adafruit_TestBed_Brains: public Adafruit_TestBed {
+class Adafruit_TestBed_Brains : public Adafruit_TestBed {
 public:
   Adafruit_TestBed_Brains(void);
   void begin(void);
@@ -35,7 +35,6 @@ public:
   SdSpiConfig SD_CONFIG = SdSpiConfig(17, SHARED_SPI, SD_SCK_MHZ(16));
 
   Adafruit_USBH_Host USBHost;
-
 
 private:
   int _sd_detect_pin;
