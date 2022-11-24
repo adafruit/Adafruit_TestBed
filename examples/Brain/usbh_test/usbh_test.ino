@@ -1,3 +1,7 @@
+// required for Host MSC block device
+#include "SdFat.h"
+
+// required for USB host
 #include "pio_usb.h"
 #include "Adafruit_TinyUSB.h"
 #include "Adafruit_TestBed_Brains.h"
@@ -8,7 +12,14 @@ void setup() {
   Serial.println("Hello world, Tester Brains self test!");
 }
 
-// core1's setup:
+void loop() {
+
+}
+
+//--------------------------------------------------------------------+
+// Setup and Loop on Core1
+//--------------------------------------------------------------------+
+
 // call usbh_begin() hrere to make pio usb background task run on core1
 // NOTE: Brain.begin() should be called here as well to prevent race condition
 void setup1() {
@@ -23,10 +34,6 @@ void setup1() {
 void loop1()
 {
   Brain.USBHost.task();
-}
-
-void loop() {
-
 }
 
 //--------------------------------------------------------------------+

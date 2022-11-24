@@ -142,16 +142,18 @@ bool Adafruit_TestBed_Brains::usbh_begin(void) {
   // Check for CPU frequency, must be multiple of 120Mhz for bit-banging USB
   uint32_t cpu_hz = clock_get_hz(clk_sys);
   if (cpu_hz != 120000000UL && cpu_hz != 240000000UL) {
-    while (!Serial)
+    while (!Serial) {
       delay(10); // wait for native usb
+    }
     Serial.printf("Error: CPU Clock = %u, PIO USB require CPU clock must be "
                   "multiple of 120 Mhz\r\n",
                   cpu_hz);
     Serial.printf("Change your CPU Clock to either 120 or 240 Mhz in Menu->CPU "
                   "Speed \r\n",
                   cpu_hz);
-    while (1)
+    while (1) {
       delay(1);
+    }
   }
 
   // enable vbus

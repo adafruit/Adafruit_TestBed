@@ -8,8 +8,6 @@
 #include <LiquidCrystal.h>
 #include <SdFat.h>
 
-// class Adafruit_InternalFlash : public FsBlockDeviceInterface { }
-
 /**************************************************************************/
 /*!
     @brief A helper class for making RP2040 "Tester Brains"
