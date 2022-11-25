@@ -55,11 +55,18 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
 
   _usbh_dp_pin = 20; // USB Host D+
   _vbus_en_pin = 22; // USB Host VBus enable
+
+  _target_rst = 27;
+  _target_swdio = 2;
+  _target_swdclk = 3;
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
   // neopixel is already set up
   Adafruit_TestBed::begin();
+
+  pinMode(_target_rst, OUTPUT);
+  digitalWrite(_target_rst, HIGH);
 
   pinMode(_sd_detect_pin, INPUT_PULLUP);
   pinMode(_vbus_en_pin, OUTPUT);
@@ -90,6 +97,24 @@ void Adafruit_TestBed_Brains::begin(void) {
   //      }
   //    }
   //  }
+}
+
+void Adafruit_TestBed_Brains::targetReset(uint32_t reset_ms) {
+  digitalWrite(_target_rst, LOW);
+  delay(reset_ms);
+  digitalWrite(_target_rst, HIGH);
+}
+
+void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin, uint32_t reset_ms) {
+  pinMode(bootsel_pin, OUTPUT);
+
+  digitalWrite(bootsel_pin, LOW);
+
+  targetReset(reset_ms);
+  delay(reset_ms);
+
+  // change bootsel to input since it is muxed with Flash ChipSelect
+  pinMode(bootsel_pin, INPUT);
 }
 
 bool Adafruit_TestBed_Brains::SD_detected(void) {
@@ -169,6 +194,26 @@ bool Adafruit_TestBed_Brains::usbh_begin(void) {
     usbh_setVBus(false);
     return false;
   }
+
+  return true;
+}
+
+bool Adafruit_TestBed_Brains::usbh_mountFS(uint8_t dev_addr) {
+  // Initialize block device with MSC device address (only support LUN 0)
+  USBH_BlockDev.begin(dev_addr);
+  USBH_BlockDev.setActiveLUN(0);
+
+  return USBH_FS.begin(&USBH_BlockDev);
+}
+
+bool Adafruit_TestBed_Brains::usbh_umountFS(uint8_t dev_addr) {
+  (void) dev_addr;
+
+  // unmount file system
+  USBH_FS.end();
+
+  // end block device
+  USBH_BlockDev.end();
 
   return true;
 }
