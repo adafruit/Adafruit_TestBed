@@ -1,7 +1,13 @@
 // Testing basic peripherals on Brain
 
+// required for Host MSC block device
+#include "SdFat.h"
+
+// required for USB host
 #include "pio_usb.h"
 #include "Adafruit_TinyUSB.h"
+
+
 #include "Adafruit_TestBed_Brains.h"
 
 void setup() {
