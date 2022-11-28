@@ -42,7 +42,7 @@ public:
   void setColor(uint32_t color);
   uint32_t Wheel(byte WheelPos);
 
-  void setLED(bool on);
+  void setLED(uint8_t state);
 
   void beep(uint32_t freq, uint32_t duration);
   void beepNblink(void);

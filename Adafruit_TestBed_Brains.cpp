@@ -156,9 +156,9 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
       size_t rd_count = (size_t)fsrc.read(buf, bufsize);
       size_t wr_count = 0;
 
-      setLED(true);
+      setLED(HIGH);
       wr_count = fdst.write(buf, rd_count);
-      setLED(false);
+      setLED(LOW);
 
       copied_bytes += wr_count;
 
