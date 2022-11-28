@@ -18,7 +18,9 @@
 #define BOOT_PID   0x0003
 
 // UF2 file path on SDCard to copy
-#define UF2_FILE_PATH   "feather/rp2040/adafruit-circuitpython-raspberry_pi_pico-en_US-7.3.3.uf2"
+// #define UF2_FILE_PATH   "pico/adafruit-circuitpython-raspberry_pi_pico-en_US-7.3.3.uf2"
+//#define UF2_FILE_PATH   "pico/blink.uf2"
+#define UF2_FILE_PATH   "pico/tinyusb_dev_cdc_msc.uf2"
 
 // If USB filesystem is mounted
 volatile bool is_usbfs_mounted = false;
@@ -28,6 +30,11 @@ volatile bool is_usbfs_mounted = false;
 //--------------------------------------------------------------------+
 
 void setup() {
+  // For debugging tinyusb
+  if (CFG_TUSB_DEBUG) {
+    Serial1.begin(115200);
+  }
+
   Serial.begin(115200);
   while (!Serial) delay(10);
   Serial.println("Hello world, Tester Brains self test!");
@@ -51,35 +58,41 @@ void setup() {
   Brain.LCD_printf(0, "SD mounted");
 
   // Print out file on SD if Serial is connected
-//  if (Serial) {
-//    Serial.println();
-//    Serial.println("SD Contents:");
-//    Serial.printf("Card size = %0.1f GB\n", 0.000000512 * Brain.SD.card()->sectorCount());
-//    Brain.SD.ls(LS_DATE | LS_SIZE);
-//  }
+  if (Serial) {
+    Serial.println();
+    Serial.println("SD Contents:");
+    Serial.printf("Card size = %0.1f GB\n", 0.000000512 * Brain.SD.card()->sectorCount());
+    Brain.SD.ls(LS_R | LS_DATE | LS_SIZE);
+  }
 
   // wait for USB filesytem is mounted. USB host bit-banging and handling is
   // processed on core1
   while (!is_usbfs_mounted) delay(10);
 
   // Print out file on USB if Serial is connected
-//  if (Serial) {
-//    Serial.println();
-//    Serial.println("RP2 Boot Contents:");
-//    Brain.USBH_FS.ls(LS_DATE | LS_SIZE);
-//  }
+  if (Serial) {
+    Serial.println();
+    Serial.println("RP2 Boot Contents:");
+    Brain.USBH_FS.ls(LS_DATE | LS_SIZE);
+  }
 
   // Copy UF2 file
+  //Brain.setColor(0xff0000);
   Brain.LCD_printf(0, "Copying UF2 file");
+  Serial.println("Copying from SD to USBHFS: " UF2_FILE_PATH);
 
   uint32_t ms = millis();
   size_t copied_bytes = Brain.rp2040_programUF2(UF2_FILE_PATH);
   ms = millis() - ms;
 
-  Brain.LCD_printf(1, "%u bytes in %02fs", copied_bytes, ms / 1000.0F);
+  //Brain.setColor(0x00ff00);
+  Brain.LCD_printf(0, "%.01fKB %.01fs", copied_bytes/1000.0F, ms / 1000.0F);
 
   Serial.printf("Completed %u bytes in %.02f seconds.\r\n", copied_bytes, ms / 1000.0F);
   Serial.printf("Speed : %.02f KB/s\r\n", (copied_bytes / 1000.0F) / (ms / 1000.0F));
+
+  // wait for rp2040 boot rom to reset
+  // while (is_usbfs_mounted) delay(10);
 }
 
 void loop() {
@@ -147,6 +160,7 @@ void tuh_msc_mount_cb(uint8_t dev_addr)
 // Invoked when a device with MassStorage interface is unmounted
 void tuh_msc_umount_cb(uint8_t dev_addr)
 {
+  is_usbfs_mounted = false;
   Brain.usbh_umountFS(dev_addr);
 }
 
