@@ -101,9 +101,7 @@ void Adafruit_TestBed_Brains::begin(void) {
   _inited = true;
 }
 
-bool Adafruit_TestBed_Brains::inited(void) {
-  return _inited;
-}
+bool Adafruit_TestBed_Brains::inited(void) { return _inited; }
 
 //--------------------------------------------------------------------+
 // Target
@@ -115,7 +113,8 @@ void Adafruit_TestBed_Brains::targetReset(uint32_t reset_ms) {
   digitalWrite(_target_rst, HIGH);
 }
 
-void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin, uint32_t reset_ms) {
+void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin,
+                                                        uint32_t reset_ms) {
   pinMode(bootsel_pin, OUTPUT);
 
   digitalWrite(bootsel_pin, LOW);
@@ -128,9 +127,9 @@ void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin, uint32_
   pinMode(bootsel_pin, INPUT);
 }
 
-size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char* fpath) {
+size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
   File32 fsrc = SD.open(fpath);
-  if ( !fsrc ) {
+  if (!fsrc) {
     Serial.printf("SD: cannot open file: %s\r\n", fpath);
     Serial.flush();
     return 0;
@@ -138,23 +137,23 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char* fpath) {
 
   size_t copied_bytes = 0;
 
-  const char* dst_name = "FIRMWARE.UF2";
+  const char *dst_name = "FIRMWARE.UF2";
   File32 fdst = USBH_FS.open(dst_name, O_WRONLY | O_CREAT);
 
   if (!fdst) {
     Serial.printf("USBH_FS: cannot create file: %s\r\n", dst_name);
-  }else {
+  } else {
     size_t const bufsize = 4096;
-    uint8_t* buf = (uint8_t*) malloc(bufsize);
+    uint8_t *buf = (uint8_t *)malloc(bufsize);
     if (!buf) {
       Serial.println("Not enough memory");
       return 0;
     }
 
     while (fsrc.available()) {
-      memset(buf, sizeof(buf), 0x00);  // empty it out
+      memset(buf, sizeof(buf), 0x00); // empty it out
 
-      size_t rd_count = (size_t) fsrc.read(buf, bufsize);
+      size_t rd_count = (size_t)fsrc.read(buf, bufsize);
       size_t wr_count = 0;
 
       setLED(true);
@@ -163,8 +162,7 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char* fpath) {
 
       copied_bytes += wr_count;
 
-      if (wr_count != rd_count)
-      {
+      if (wr_count != rd_count) {
         Serial.println("USBH_FS: Failed to write file");
         break;
       }
@@ -281,7 +279,7 @@ bool Adafruit_TestBed_Brains::usbh_mountFS(uint8_t dev_addr) {
 }
 
 bool Adafruit_TestBed_Brains::usbh_umountFS(uint8_t dev_addr) {
-  (void) dev_addr;
+  (void)dev_addr;
 
   // unmount file system
   USBH_FS.end();

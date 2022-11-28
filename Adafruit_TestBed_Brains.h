@@ -44,7 +44,7 @@ public:
 
   // program rp2040 target by copying UF2 file from SDCard
   // return number of copied bytes (typically uf2 file size)
-  size_t rp2040_programUF2(const char* fpath);
+  size_t rp2040_programUF2(const char *fpath);
 
   //------------- Public Variables -------------//
   LiquidCrystal lcd = LiquidCrystal(7, 8, 9, 10, 11, 12);
