@@ -41,6 +41,7 @@ Adafruit_TestBed_Brains Brain;
 /**************************************************************************/
 
 Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
+  _inited = false;
 
   piezoPin = 15; // onboard buzzer
   ledPin = 25;   // green LED on Pico
@@ -97,7 +98,16 @@ void Adafruit_TestBed_Brains::begin(void) {
   //      }
   //    }
   //  }
+  _inited = true;
 }
+
+bool Adafruit_TestBed_Brains::inited(void) {
+  return _inited;
+}
+
+//--------------------------------------------------------------------+
+// Target
+//--------------------------------------------------------------------+
 
 void Adafruit_TestBed_Brains::targetReset(uint32_t reset_ms) {
   digitalWrite(_target_rst, LOW);
@@ -117,6 +127,61 @@ void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin, uint32_
   pinMode(bootsel_pin, INPUT);
 }
 
+size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char* fpath) {
+  File32 fsrc = SD.open(fpath);
+  if ( !fsrc ) {
+    Serial.printf("SD: cannot open file: %s\r\n", fpath);
+    Serial.flush();
+    return 0;
+  }
+
+  size_t copied_bytes = 0;
+
+  const char* dst_name = "FIRMWARE.UF2";
+  File32 fdst = USBH_FS.open(dst_name, O_WRONLY | O_CREAT);
+
+  if (!fdst) {
+    Serial.printf("USBH_FS: cannot create file: %s\r\n", dst_name);
+  }else {
+    size_t const bufsize = 4096;
+    uint8_t* buf = (uint8_t*) malloc(bufsize);
+    if (!buf) {
+      Serial.println("Not enough memory");
+      return 0;
+    }
+
+    while (fsrc.available()) {
+      memset(buf, sizeof(buf), 0x00);  // empty it out
+
+      size_t rd_count = (size_t) fsrc.read(buf, bufsize);
+      size_t wr_count = 0;
+
+      setLED(true);
+      wr_count = fdst.write(buf, rd_count);
+      setLED(false);
+
+      copied_bytes += wr_count;
+
+      if (wr_count != rd_count)
+      {
+        Serial.println("USBH_FS: Failed to write file");
+        break;
+      }
+    }
+
+    free(buf);
+  }
+
+  fsrc.close();
+  fdst.close();
+
+  return copied_bytes;
+}
+
+//--------------------------------------------------------------------+
+// SD Card
+//--------------------------------------------------------------------+
+
 bool Adafruit_TestBed_Brains::SD_detected(void) {
   return digitalRead(_sd_detect_pin);
 }
@@ -124,6 +189,10 @@ bool Adafruit_TestBed_Brains::SD_detected(void) {
 bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
   return SD.begin(_sd_cs_pin, max_clock);
 }
+
+//--------------------------------------------------------------------+
+// LCD
+//--------------------------------------------------------------------+
 
 void Adafruit_TestBed_Brains::LCD_printf(bool linenum, const char format[],
                                          ...) {
@@ -158,6 +227,10 @@ void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1,
   LCD_printf(1, errmsg2);
   delay(250);
 }
+
+//--------------------------------------------------------------------+
+// USB Host
+//--------------------------------------------------------------------+
 
 void Adafruit_TestBed_Brains::usbh_setVBus(bool en) {
   digitalWrite(_vbus_en_pin, en ? HIGH : LOW);

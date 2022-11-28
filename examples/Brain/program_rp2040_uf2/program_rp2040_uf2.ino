@@ -17,76 +17,130 @@
 #define BOOT_VID   0x2e8a
 #define BOOT_PID   0x0003
 
+// UF2 file path on SDCard to copy
+#define UF2_FILE_PATH   "feather/rp2040/adafruit-circuitpython-raspberry_pi_pico-en_US-7.3.3.uf2"
+
+// If USB filesystem is mounted
+volatile bool is_usbfs_mounted = false;
+
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
 //--------------------------------------------------------------------+
 
 void setup() {
+  Serial.begin(115200);
+  while (!Serial) delay(10);
+  Serial.println("Hello world, Tester Brains self test!");
+
+  // sync: wait for Brain.begin() called in core1
+  while (!Brain.inited()) {
+    delay(10);
+  }
+
+  // SD Card
+  if (!Brain.SD_detected()) {
+    Brain.LCD_printf(0, "No SD Card");
+    while ( !Brain.SD_detected() ) delay(10);
+  }
+
+  if ( !Brain.SD_begin(SD_SCK_MHZ(16)) ) {
+    Brain.LCD_printf(0, "SD init failed");
+    while(1) delay(10);
+  }
+
+  Brain.LCD_printf(0, "SD mounted");
+
+  // Print out file on SD if Serial is connected
+//  if (Serial) {
+//    Serial.println();
+//    Serial.println("SD Contents:");
+//    Serial.printf("Card size = %0.1f GB\n", 0.000000512 * Brain.SD.card()->sectorCount());
+//    Brain.SD.ls(LS_DATE | LS_SIZE);
+//  }
+
+  // wait for USB filesytem is mounted. USB host bit-banging and handling is
+  // processed on core1
+  while (!is_usbfs_mounted) delay(10);
+
+  // Print out file on USB if Serial is connected
+//  if (Serial) {
+//    Serial.println();
+//    Serial.println("RP2 Boot Contents:");
+//    Brain.USBH_FS.ls(LS_DATE | LS_SIZE);
+//  }
+
+  // Copy UF2 file
+  Brain.LCD_printf(0, "Copying UF2 file");
+
+  uint32_t ms = millis();
+  size_t copied_bytes = Brain.rp2040_programUF2(UF2_FILE_PATH);
+  ms = millis() - ms;
+
+  Brain.LCD_printf(1, "%u bytes in %02fs", copied_bytes, ms / 1000.0F);
+
+  Serial.printf("Completed %u bytes in %.02f seconds.\r\n", copied_bytes, ms / 1000.0F);
+  Serial.printf("Speed : %.02f KB/s\r\n", (copied_bytes / 1000.0F) / (ms / 1000.0F));
 }
 
 void loop() {
-  Serial.flush();
 }
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core1
 //--------------------------------------------------------------------+
 
-// call usbh_begin() hrere to make pio usb background task run on core1
+// call usbh_begin() here to make pio usb background task run on core1
 // NOTE: Brain.begin() should be called here as well to prevent race condition
 void setup1() {
-  Serial.begin(115200);
-  while (!Serial) delay(100);
-  Serial.println("Hello world, Tester Brains self test!");
-
   Brain.begin();
   Brain.usbh_begin();
 
-  Brain.LCD_printf(0, "No USB attached");
-  Brain.LCD_printf(1, "Plug your device");
+  Brain.LCD_printf(1, "No USB Device");
 
   // reset rp2040 target into Boot Rom, default bootsel = 28, reset duration = 10 ms
   Brain.rp2040_targetResetBootRom();
 }
 
 // core1's loop: process usb host task on core1
-void loop1()
-{
+void loop1() {
   Brain.USBHost.task();
 }
 
 //--------------------------------------------------------------------+
 // TinyUSB Host callbacks
+// Note: running in the same core where Brain.USBHost.task() is called
 //--------------------------------------------------------------------+
 extern "C"  {
 
 // Invoked when device is mounted (configured)
-void tuh_mount_cb (uint8_t daddr)
+void tuh_mount_cb (uint8_t dev_addr)
 {
   uint16_t vid, pid;
-  tuh_vid_pid_get(daddr, &vid, &pid);
+  tuh_vid_pid_get(dev_addr, &vid, &pid);
 
-  Brain.LCD_printf(0, "USBID %04x:%04x", vid, pid);
-  if ( vid == BOOT_VID && pid == BOOT_PID ) {
-    Brain.LCD_printf(1, "RP2040 Boot ROM");
+  if ( !(vid == BOOT_VID && pid == BOOT_PID) ) {
+    Brain.LCD_printf(1, "UnkDev %04x:%04x", vid, pid);
   }
 }
 
 /// Invoked when device is unmounted (bus reset/unplugged)
-void tuh_umount_cb(uint8_t daddr)
+void tuh_umount_cb(uint8_t dev_addr)
 {
-  Brain.LCD_printf(0, "No USB attached");
-  Brain.LCD_printf(1, "Plug your device");
+  (void) dev_addr;
+  Brain.LCD_printf(1, "No USB Device");
 }
 
 // Invoked when a device with MassStorage interface is mounted
 void tuh_msc_mount_cb(uint8_t dev_addr)
 {
-  if ( Brain.usbh_mountFS(dev_addr) ) {
-    Brain.USBH_FS.ls(&Serial, LS_SIZE);
-  }else
-  {
-    Serial.println("Failed to mount USB FS");
+  uint16_t vid, pid;
+  tuh_vid_pid_get(dev_addr, &vid, &pid);
+
+  if ( vid == BOOT_VID && pid == BOOT_PID ) {
+    is_usbfs_mounted = Brain.usbh_mountFS(dev_addr);
+    if (is_usbfs_mounted) {
+      Brain.LCD_printf(1, "RP2 Boot mounted");
+    }
   }
 }
 

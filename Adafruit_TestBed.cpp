@@ -362,6 +362,16 @@ void Adafruit_TestBed::disableI2C(void) {
 
 /**************************************************************************/
 /*!
+    @brief  Set LED on or off
+    @param  on LED State
+*/
+/**************************************************************************/
+void Adafruit_TestBed::setLED(bool on) {
+  digitalWrite(ledPin, on ? HIGH : LOW);
+}
+
+/**************************************************************************/
+/*!
     @brief  Perform a beep on the piezoPin if defined
     @param  freq Desired tone frequency
     @param  duration Length of beep in ms
