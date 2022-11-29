@@ -30,7 +30,7 @@ void loop() {
 void setup1() {
   Serial.begin(115200);
   // while (!Serial) delay(10);
-  Serial.println("Hello world, Tester Brains self test!");
+  Serial.println("Tester Brains USB Host test!");
 
   Brain.begin();
   Brain.usbh_begin();

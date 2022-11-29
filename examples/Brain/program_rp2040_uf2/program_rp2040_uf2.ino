@@ -30,22 +30,7 @@ volatile bool is_usbfs_mounted = false;
 // Setup and Loop on Core0
 //--------------------------------------------------------------------+
 
-void setup() {
-  // For debugging tinyusb
-  if (CFG_TUSB_DEBUG) {
-    Serial1.begin(115200);
-  }
-
-  Serial.begin(115200);
-  while (!Serial) delay(10);
-  Serial.println("Hello world, Tester Brains self test!");
-
-  // sync: wait for Brain.begin() called in core1
-  while (!Brain.inited()) {
-    delay(10);
-  }
-
-  // SD Card
+void prepare_sd(void) {
   if (!Brain.SD_detected()) {
     Brain.LCD_printf(0, "No SD Card");
     while ( !Brain.SD_detected() ) delay(10);
@@ -65,32 +50,43 @@ void setup() {
     Serial.printf("Card size = %0.1f GB\n", 0.000000512 * Brain.SD.card()->sectorCount());
     Brain.SD.ls(LS_R | LS_DATE | LS_SIZE);
   }
+}
 
-  // wait for USB filesytem is mounted. USB host bit-banging and handling is
+void print_speed(size_t count, uint32_t ms) {
+  Brain.LCD_printf(0, "%.01fKB %.01fs", count/1000.0F, ms / 1000.0F);
+
+  Serial.printf("Completed %u bytes in %.02f seconds.\r\n", count, ms / 1000.0F);
+  Serial.printf("Speed : %.02f KB/s\r\n", (count / 1000.0F) / (ms / 1000.0F));
+}
+
+void setup() {
+  // For debugging tinyusb
+  if (CFG_TUSB_DEBUG) {
+    Serial1.begin(115200);
+  }
+
+  Serial.begin(115200);
+  while (!Serial) delay(10);
+  Serial.println("Tester Brains: UF2 copy from SD to USBH FS test!");
+
+  // sync: wait for Brain.begin() called in core1 before accessing SD or other peripherals
+  while (!Brain.inited()) delay(10);
+
+  // prepare SD Card
+  prepare_sd();
+
+  // wait for USB filesytem is mounted. USB host bit-banging and task is
   // processed on core1
   while (!is_usbfs_mounted) delay(10);
 
-  // Print out file on USB if Serial is connected
-  if (Serial) {
-    Serial.println();
-    Serial.println("RP2 Boot Contents:");
-    Brain.USBH_FS.ls(LS_DATE | LS_SIZE);
-  }
-
   // Copy UF2 file
-  //Brain.setColor(0xff0000);
   Brain.LCD_printf(0, "Copying UF2 file");
   Serial.println("Copying from SD to USBHFS: " UF2_FILE_PATH);
 
   uint32_t ms = millis();
   size_t copied_bytes = Brain.rp2040_programUF2(UF2_FILE_PATH);
-  ms = millis() - ms;
 
-  //Brain.setColor(0x00ff00);
-  Brain.LCD_printf(0, "%.01fKB %.01fs", copied_bytes/1000.0F, ms / 1000.0F);
-
-  Serial.printf("Completed %u bytes in %.02f seconds.\r\n", copied_bytes, ms / 1000.0F);
-  Serial.printf("Speed : %.02f KB/s\r\n", (copied_bytes / 1000.0F) / (ms / 1000.0F));
+  print_speed(copied_bytes, millis() - ms);
 
   // wait for rp2040 boot rom to reset
   // while (is_usbfs_mounted) delay(10);
@@ -154,6 +150,13 @@ void tuh_msc_mount_cb(uint8_t dev_addr)
     is_usbfs_mounted = Brain.usbh_mountFS(dev_addr);
     if (is_usbfs_mounted) {
       Brain.LCD_printf(1, "RP2 Boot mounted");
+
+      // Print out file on USB if Serial is connected
+      if (Serial) {
+        Serial.println();
+        Serial.println("RP2 Boot Contents:");
+        Brain.USBH_FS.ls(LS_DATE | LS_SIZE);
+      }
     }
   }
 }
