@@ -150,13 +150,6 @@ void tuh_msc_mount_cb(uint8_t dev_addr)
     is_usbfs_mounted = Brain.usbh_mountFS(dev_addr);
     if (is_usbfs_mounted) {
       Brain.LCD_printf(1, "RP2 Boot mounted");
-
-      // Print out file on USB if Serial is connected
-      if (Serial) {
-        Serial.println();
-        Serial.println("RP2 Boot Contents:");
-        Brain.USBH_FS.ls(LS_DATE | LS_SIZE);
-      }
     }
   }
 }

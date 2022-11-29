@@ -21,7 +21,7 @@ public:
   bool inited(void);
 
   // LCD
-  void LCD_printf(bool linenum, const char format[], ...);
+  void LCD_printf(uint8_t linenum, const char format[], ...);
   void LCD_error(const char *errmsg1, const char *errmsg2);
   void LCD_info(const char *msg1, const char *msg2);
 
@@ -36,12 +36,12 @@ public:
   bool usbh_umountFS(uint8_t dev_addr);
 
   // Target
-  void targetReset(uint32_t reset_ms);
+  void targetReset(uint32_t reset_ms = 20);
 
   //------------- RP2040 target specific -------------//
 
   // reset rp2040 target to Boot ROM
-  void rp2040_targetResetBootRom(int bootsel_pin = 28, uint32_t reset_ms = 10);
+  void rp2040_targetResetBootRom(int bootsel_pin = 28, uint32_t reset_ms = 20);
 
   // program rp2040 target by copying UF2 file from SDCard
   // return number of copied bytes (typically uf2 file size)
