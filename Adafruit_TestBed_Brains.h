@@ -4,9 +4,10 @@
 #ifdef ARDUINO_ARCH_RP2040
 
 #include "Adafruit_TestBed.h"
-#include "Adafruit_TinyUSB.h"
+#include "SdFat.h"
 #include <LiquidCrystal.h>
-#include <SdFat.h>
+
+#include "Adafruit_TinyUSB.h"
 
 /**************************************************************************/
 /*!

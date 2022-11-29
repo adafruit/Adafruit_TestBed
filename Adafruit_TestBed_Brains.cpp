@@ -24,8 +24,10 @@
 
 #ifdef ARDUINO_ARCH_RP2040
 
-#include "Arduino.h"
+#include "SdFat.h"
 #include "pio_usb.h"
+
+#include "Adafruit_TinyUSB.h"
 
 #include "Adafruit_TestBed_Brains.h"
 
