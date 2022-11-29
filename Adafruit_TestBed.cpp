@@ -366,9 +366,7 @@ void Adafruit_TestBed::disableI2C(void) {
     @param  on LED State
 */
 /**************************************************************************/
-void Adafruit_TestBed::setLED(uint8_t state) {
-  digitalWrite(ledPin, state);
-}
+void Adafruit_TestBed::setLED(uint8_t state) { digitalWrite(ledPin, state); }
 
 /**************************************************************************/
 /*!
