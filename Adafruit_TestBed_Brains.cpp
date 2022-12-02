@@ -27,6 +27,7 @@
 #include "SdFat.h"
 #include "pio_usb.h"
 
+#include "Adafruit_DAP.h"
 #include "Adafruit_TinyUSB.h"
 
 #include "Adafruit_TestBed_Brains.h"
@@ -44,6 +45,7 @@ Adafruit_TestBed_Brains Brain;
 
 Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
   _inited = false;
+  _lcd_line = 0;
 
   piezoPin = 15; // onboard buzzer
   ledPin = 25;   // green LED on Pico
@@ -62,6 +64,8 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
   _target_rst = 27;
   _target_swdio = 2;
   _target_swdclk = 3;
+
+  dap_samd21 = NULL;
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
@@ -105,15 +109,15 @@ void Adafruit_TestBed_Brains::begin(void) {
 
 bool Adafruit_TestBed_Brains::inited(void) { return _inited; }
 
-//--------------------------------------------------------------------+
-// Target
-//--------------------------------------------------------------------+
-
 void Adafruit_TestBed_Brains::targetReset(uint32_t reset_ms) {
   digitalWrite(_target_rst, LOW);
   delay(reset_ms);
   digitalWrite(_target_rst, HIGH);
 }
+
+//--------------------------------------------------------------------+
+// RP2040 Target
+//--------------------------------------------------------------------+
 
 void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin,
                                                         uint32_t reset_ms) {
@@ -133,7 +137,6 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
   File32 fsrc = SD.open(fpath);
   if (!fsrc) {
     Serial.printf("SD: cannot open file: %s\r\n", fpath);
-    Serial.flush();
     return 0;
   }
 
@@ -153,7 +156,7 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
     }
 
     while (fsrc.available()) {
-      memset(buf, sizeof(buf), 0x00); // empty it out
+      memset(buf, 0x00, bufsize); // empty it out
 
       size_t rd_count = (size_t)fsrc.read(buf, bufsize);
       size_t wr_count = 0;
@@ -180,6 +183,155 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
 }
 
 //--------------------------------------------------------------------+
+// SAMD21 Target
+//--------------------------------------------------------------------+
+
+// Simple and low code CRC calculation (copied from PicoOTA)
+class BrainCRC32 {
+public:
+    BrainCRC32() {
+        crc = 0xffffffff;
+    }
+
+    ~BrainCRC32() {
+    }
+
+    void add(const void *d, uint32_t len) {
+        const uint8_t *data = (const uint8_t *)d;
+        for (uint32_t i = 0; i < len; i++) {
+            crc ^= data[i];
+            for (int j = 0; j < 8; j++) {
+                if (crc & 1) {
+                    crc = (crc >> 1) ^ 0xedb88320;
+                } else {
+                    crc >>= 1;
+                }
+            }
+        }
+    }
+
+    uint32_t get() {
+        return ~crc;
+    }
+
+private:
+    uint32_t crc;
+};
+
+static void dap_err_hanlder(const char *msg)
+{
+  Brain.LCD_error(msg, NULL);
+}
+
+bool Adafruit_TestBed_Brains::init_dap(Adafruit_DAP* dap) {
+  pinMode(_target_swdio, OUTPUT);
+  digitalWrite(_target_swdio, LOW);
+
+  pinMode(_target_swdclk, OUTPUT);
+  digitalWrite(_target_swdclk, LOW);
+
+  return dap->begin(_target_swdclk, _target_swdio, _target_rst, dap_err_hanlder);
+}
+
+bool Adafruit_TestBed_Brains::connect_dap(Adafruit_DAP* dap) {
+  LCD_printf(0, "Connecting...");
+  if (!dap->targetConnect()) {
+    return false;
+  }
+
+  uint32_t dsu_did;
+  if (!dap->select(&dsu_did)) {
+    Serial.printf("Unknown device found 0x%08X", dsu_did);
+    LCD_printf(0, "Unknown device found");
+    return false;
+  }
+
+  Serial.printf("Found Target: %s\n", dap->target_device.name);
+  Serial.printf("Flash size: %u, Flash pages: %u\n", dap->target_device.flash_size, dap->target_device.n_pages);
+
+  return true;
+}
+
+bool Adafruit_TestBed_Brains::samd21_connectDAP(void) {
+  // first time call connectDAP()
+  if (!dap_samd21) {
+    dap_samd21 = new Adafruit_DAP_SAM();
+    if (!init_dap(dap_samd21)) {
+      delete dap_samd21;
+      return false;
+    }
+  }
+
+  return connect_dap(dap_samd21);
+}
+
+void Adafruit_TestBed_Brains::samd21_disconnectDAP(void) {
+  if (!dap_samd21) {
+    return;
+  }
+  dap_samd21->deselect();
+}
+
+size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath, uint32_t addr) {
+  if (!dap_samd21) {
+    return 0;
+  }
+
+  File32 fsrc = SD.open(fpath);
+  if (!fsrc) {
+    Serial.printf("SD: cannot open file: %s\r\n", fpath);
+    return 0;
+  }
+  uint32_t fsize = fsrc.fileSize();
+
+  size_t const bufsize = SAM_PAGE_SIZE;
+  uint8_t *buf = (uint8_t *)malloc(bufsize);
+
+  if (!buf) {
+    Serial.println("Not enough memory");
+    return 0;
+  }
+
+  LCD_printf(0, "Erasing..");
+  dap_samd21->erase();
+  LCD_printf(0, "Erasing...done");
+
+  LCD_printf(0, "Programming..");
+
+  BrainCRC32 crc32;
+  dap_samd21->program_start(addr);
+
+  while (fsrc.available()) {
+    memset(buf, 0xff, bufsize); // empty it out
+
+    uint32_t rd_count = fsrc.read(buf, bufsize);
+
+    setLED(HIGH);
+    dap_samd21->programBlock(addr, buf, bufsize);
+    crc32.add(buf, rd_count);
+    setLED(LOW);
+
+    addr += bufsize;
+  }
+
+  uint32_t target_crc;
+  dap_samd21->readCRC(fsize, &target_crc);
+  target_crc ^= 0xFFFFFFFFUL;
+
+  if (target_crc != crc32.get()) {
+    LCD_printf(1, "CRC Failed");
+  }else
+  {
+    LCD_printf(1, "Done!");
+  }
+
+  free(buf);
+  fsrc.close();
+
+  return fsize;
+}
+
+//--------------------------------------------------------------------+
 // SD Card
 //--------------------------------------------------------------------+
 
@@ -188,45 +340,76 @@ bool Adafruit_TestBed_Brains::SD_detected(void) {
 }
 
 bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
-  return SD.begin(_sd_cs_pin, max_clock);
+  if (!SD_detected()) {
+    LCD_printf(0, "No SD Card");
+    while ( !SD_detected() ) delay(10);
+  }
+
+  if ( !SD.begin(_sd_cs_pin, max_clock) ) {
+    LCD_printf(0, "SD init failed");
+    while(1) delay(10);
+  }
+
+  LCD_printf(0, "SD mounted");
+  return true;
 }
 
 //--------------------------------------------------------------------+
 // LCD
 //--------------------------------------------------------------------+
 
-void Adafruit_TestBed_Brains::LCD_printf(uint8_t linenum, const char format[],
-                                         ...) {
-  char linebuf[17];
-  memset(linebuf, 0, sizeof(linebuf));
-
-  va_list ap;
-  va_start(ap, format);
-  vsnprintf(linebuf, sizeof(linebuf), format, ap);
-
+void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {
   // fill the rest with spaces
   memset(linebuf + strlen(linebuf), ' ', 16 - strlen(linebuf));
   linebuf[16] = 0;
   lcd.setCursor(0, linenum);
   lcd.write(linebuf);
-  va_end(ap);
 
   Serial.print("LCD: ");
   Serial.println(linebuf);
+
+  _lcd_line = 1 - linenum;
+}
+
+void Adafruit_TestBed_Brains::LCD_printf(uint8_t linenum, const char format[],
+                                         ...) {
+  char linebuf[17];
+
+  va_list ap;
+  va_start(ap, format);
+  vsnprintf(linebuf, sizeof(linebuf), format, ap);
+  va_end(ap);
+
+  lcd_write(linenum, linebuf);
+}
+
+void Adafruit_TestBed_Brains::LCD_printf(const char format[], ...) {
+  char linebuf[17];
+
+  va_list ap;
+  va_start(ap, format);
+  vsnprintf(linebuf, sizeof(linebuf), format, ap);
+  va_end(ap);
+
+  lcd_write(_lcd_line, linebuf);
 }
 
 void Adafruit_TestBed_Brains::LCD_info(const char *msg1, const char *msg2) {
   setColor(0xFFFFFF);
   LCD_printf(0, msg1);
-  LCD_printf(1, msg2);
+
+  if (msg2) {
+    LCD_printf(1, msg2);
+  }
 }
 
 void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1,
                                         const char *errmsg2) {
   setColor(0xFF0000);
   LCD_printf(0, errmsg1);
-  LCD_printf(1, errmsg2);
-  delay(250);
+  if (errmsg2) {
+    LCD_printf(1, errmsg2);
+  }
 }
 
 //--------------------------------------------------------------------+
@@ -270,6 +453,10 @@ bool Adafruit_TestBed_Brains::usbh_begin(void) {
   }
 
   return true;
+}
+
+bool Adafruit_TestBed_Brains::usbh_inited(void) {
+  return tuh_inited();
 }
 
 bool Adafruit_TestBed_Brains::usbh_mountFS(uint8_t dev_addr) {
