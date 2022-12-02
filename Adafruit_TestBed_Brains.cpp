@@ -189,51 +189,44 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
 // Simple and low code CRC calculation (copied from PicoOTA)
 class BrainCRC32 {
 public:
-    BrainCRC32() {
-        crc = 0xffffffff;
-    }
+  BrainCRC32() { crc = 0xffffffff; }
 
-    ~BrainCRC32() {
-    }
+  ~BrainCRC32() {}
 
-    void add(const void *d, uint32_t len) {
-        const uint8_t *data = (const uint8_t *)d;
-        for (uint32_t i = 0; i < len; i++) {
-            crc ^= data[i];
-            for (int j = 0; j < 8; j++) {
-                if (crc & 1) {
-                    crc = (crc >> 1) ^ 0xedb88320;
-                } else {
-                    crc >>= 1;
-                }
-            }
+  void add(const void *d, uint32_t len) {
+    const uint8_t *data = (const uint8_t *)d;
+    for (uint32_t i = 0; i < len; i++) {
+      crc ^= data[i];
+      for (int j = 0; j < 8; j++) {
+        if (crc & 1) {
+          crc = (crc >> 1) ^ 0xedb88320;
+        } else {
+          crc >>= 1;
         }
+      }
     }
+  }
 
-    uint32_t get() {
-        return ~crc;
-    }
+  uint32_t get() { return ~crc; }
 
 private:
-    uint32_t crc;
+  uint32_t crc;
 };
 
-static void dap_err_hanlder(const char *msg)
-{
-  Brain.LCD_error(msg, NULL);
-}
+static void dap_err_hanlder(const char *msg) { Brain.LCD_error(msg, NULL); }
 
-bool Adafruit_TestBed_Brains::init_dap(Adafruit_DAP* dap) {
+bool Adafruit_TestBed_Brains::init_dap(Adafruit_DAP *dap) {
   pinMode(_target_swdio, OUTPUT);
   digitalWrite(_target_swdio, LOW);
 
   pinMode(_target_swdclk, OUTPUT);
   digitalWrite(_target_swdclk, LOW);
 
-  return dap->begin(_target_swdclk, _target_swdio, _target_rst, dap_err_hanlder);
+  return dap->begin(_target_swdclk, _target_swdio, _target_rst,
+                    dap_err_hanlder);
 }
 
-bool Adafruit_TestBed_Brains::connect_dap(Adafruit_DAP* dap) {
+bool Adafruit_TestBed_Brains::connect_dap(Adafruit_DAP *dap) {
   LCD_printf(0, "Connecting...");
   if (!dap->targetConnect()) {
     return false;
@@ -247,7 +240,8 @@ bool Adafruit_TestBed_Brains::connect_dap(Adafruit_DAP* dap) {
   }
 
   Serial.printf("Found Target: %s\n", dap->target_device.name);
-  Serial.printf("Flash size: %u, Flash pages: %u\n", dap->target_device.flash_size, dap->target_device.n_pages);
+  Serial.printf("Flash size: %u, Flash pages: %u\n",
+                dap->target_device.flash_size, dap->target_device.n_pages);
 
   return true;
 }
@@ -272,7 +266,24 @@ void Adafruit_TestBed_Brains::samd21_disconnectDAP(void) {
   dap_samd21->deselect();
 }
 
-size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath, uint32_t addr) {
+bool Adafruit_TestBed_Brains::samd21_unlockFuse(void) {
+  if (!dap_samd21) {
+    return false;
+  }
+
+  return true;
+}
+
+bool Adafruit_TestBed_Brains::samd21_lockFuse(void) {
+  if (!dap_samd21) {
+    return false;
+  }
+
+  return true;
+}
+
+size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath,
+                                                    uint32_t addr) {
   if (!dap_samd21) {
     return 0;
   }
@@ -320,8 +331,7 @@ size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath, uint32_t 
 
   if (target_crc != crc32.get()) {
     LCD_printf(1, "CRC Failed");
-  }else
-  {
+  } else {
     LCD_printf(1, "Done!");
   }
 
@@ -342,12 +352,14 @@ bool Adafruit_TestBed_Brains::SD_detected(void) {
 bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
   if (!SD_detected()) {
     LCD_printf(0, "No SD Card");
-    while ( !SD_detected() ) delay(10);
+    while (!SD_detected())
+      delay(10);
   }
 
-  if ( !SD.begin(_sd_cs_pin, max_clock) ) {
+  if (!SD.begin(_sd_cs_pin, max_clock)) {
     LCD_printf(0, "SD init failed");
-    while(1) delay(10);
+    while (1)
+      delay(10);
   }
 
   LCD_printf(0, "SD mounted");
@@ -455,9 +467,7 @@ bool Adafruit_TestBed_Brains::usbh_begin(void) {
   return true;
 }
 
-bool Adafruit_TestBed_Brains::usbh_inited(void) {
-  return tuh_inited();
-}
+bool Adafruit_TestBed_Brains::usbh_inited(void) { return tuh_inited(); }
 
 bool Adafruit_TestBed_Brains::usbh_mountFS(uint8_t dev_addr) {
   // Initialize block device with MSC device address (only support LUN 0)

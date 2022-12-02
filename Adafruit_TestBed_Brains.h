@@ -72,7 +72,7 @@ public:
   FatVolume USBH_FS;
   Adafruit_USBH_MSC_BlockDevice USBH_BlockDev;
 
-  Adafruit_DAP_SAM* dap_samd21;
+  Adafruit_DAP_SAM *dap_samd21;
 
 private:
   bool _inited;
@@ -87,8 +87,8 @@ private:
   int _target_swdio;
   int _target_swdclk;
 
-  bool init_dap(Adafruit_DAP* dap);
-  bool connect_dap(Adafruit_DAP* dap);
+  bool init_dap(Adafruit_DAP *dap);
+  bool connect_dap(Adafruit_DAP *dap);
 
   uint32_t compute_crc32(const uint8_t *data, uint32_t len);
   void lcd_write(uint8_t linenum, char buf[17]);
