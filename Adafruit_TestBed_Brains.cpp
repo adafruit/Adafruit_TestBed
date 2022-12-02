@@ -92,7 +92,7 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
   _target_swdio = 2;
   _target_swdclk = 3;
 
-  dap_samd21 = NULL;
+  dap = NULL;
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
@@ -214,18 +214,28 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
 //--------------------------------------------------------------------+
 static void dap_err_hanlder(const char *msg) { Brain.LCD_error(msg, NULL); }
 
-bool Adafruit_TestBed_Brains::init_dap(Adafruit_DAP *dap) {
+bool Adafruit_TestBed_Brains::dap_begin(Adafruit_DAP *dp) {
+  if (!dp) {
+    return dp;
+  }
+
   pinMode(_target_swdio, OUTPUT);
   digitalWrite(_target_swdio, LOW);
 
   pinMode(_target_swdclk, OUTPUT);
   digitalWrite(_target_swdclk, LOW);
 
+  dap = dp;
+
   return dap->begin(_target_swdclk, _target_swdio, _target_rst,
                     dap_err_hanlder);
 }
 
-bool Adafruit_TestBed_Brains::connect_dap(Adafruit_DAP *dap) {
+bool Adafruit_TestBed_Brains::dap_connect(void) {
+  if (!dap) {
+    return false;
+  }
+
   LCD_printf(0, "Connecting...");
   if (!dap->targetConnect()) {
     return false;
@@ -233,8 +243,11 @@ bool Adafruit_TestBed_Brains::connect_dap(Adafruit_DAP *dap) {
 
   uint32_t dsu_did;
   if (!dap->select(&dsu_did)) {
-    Serial.printf("Unknown device found 0x%08X", dsu_did);
-    LCD_printf(0, "Unknown device found");
+    Serial.printf("Unknown MCU found 0x%08X\n", dsu_did);
+    LCD_printf(0, "Unknown MCU");
+    while (1) {
+      delay(1);
+    }
     return false;
   }
 
@@ -245,75 +258,47 @@ bool Adafruit_TestBed_Brains::connect_dap(Adafruit_DAP *dap) {
   return true;
 }
 
-bool Adafruit_TestBed_Brains::samd21_connectDAP(void) {
-  // first time call connectDAP()
-  if (!dap_samd21) {
-    dap_samd21 = new Adafruit_DAP_SAM();
-    if (!init_dap(dap_samd21)) {
-      delete dap_samd21;
-      return false;
-    }
-  }
-
-  return connect_dap(dap_samd21);
-}
-
-void Adafruit_TestBed_Brains::samd21_disconnectDAP(void) {
-  if (!dap_samd21) {
+void Adafruit_TestBed_Brains::dap_disconnect(void) {
+  if (!dap) {
     return;
   }
-  dap_samd21->deselect();
+  dap->deselect();
 }
 
-static void print_fuse(Adafruit_DAP_SAM *dap) {
-  uint32_t fuse_low = dap->_USER_ROW.fuseParts[0];
-  uint32_t fuse_high = dap->_USER_ROW.fuseParts[1];
+// static void print_fuse(Adafruit_DAP_SAM *dap) {
+//   uint32_t fuse_low = dap->_USER_ROW.fuseParts[0];
+//   uint32_t fuse_high = dap->_USER_ROW.fuseParts[1];
+//
+//   Serial.printf("\tFuse high: 0x%08X\n", fuse_high);
+//   Serial.printf("\tFuse low : 0x%08X\n", fuse_low);
+//   Serial.printf("\tBoot protect: 0x%02X\n", dap->_USER_ROW.bit.BOOTPROT);
+// }
 
-  Serial.printf("\tFuse high: 0x%08X\n", fuse_high);
-  Serial.printf("\tFuse low : 0x%08X\n", fuse_low);
-  Serial.printf("\tBoot protect: 0x%02X\n", dap->_USER_ROW.bit.BOOTPROT);
-}
-
-bool Adafruit_TestBed_Brains::samd21_unlockFuse(void) {
-  if (!dap_samd21) {
+bool Adafruit_TestBed_Brains::dap_unprotectBoot(void) {
+  if (!dap) {
     return false;
   }
 
   LCD_printf("Unlock chip...");
-
-  dap_samd21->fuseRead();
-
-  print_fuse(dap_samd21);
-
-  if (dap_samd21->_USER_ROW.bit.BOOTPROT != 0x07) {
-    // unlock it!
-    dap_samd21->_USER_ROW.bit.BOOTPROT = 0x07;
-    dap_samd21->fuseWrite();
-
-    print_fuse(dap_samd21);
-  }
-
-  return true;
+  bool ret = dap->unprotectBoot();
+  LCD_printf(ret ? "OK" : "Failed");
+  return ret;
 }
 
-bool Adafruit_TestBed_Brains::samd21_lockFuse(void) {
-  if (!dap_samd21) {
+bool Adafruit_TestBed_Brains::dap_protectBoot(void) {
+  if (!dap) {
     return false;
   }
 
   LCD_printf("Lock chip...");
-
-  dap_samd21->fuseRead();
-  dap_samd21->_USER_ROW.bit.BOOTPROT = 0x02;
-  dap_samd21->fuseWrite();
-
-  print_fuse(dap_samd21);
-  return true;
+  bool ret = dap->protectBoot();
+  LCD_printf(ret ? "OK" : "Failed");
+  return ret;
 }
 
-size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath,
-                                                    uint32_t addr) {
-  if (!dap_samd21) {
+size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
+                                                 uint32_t addr) {
+  if (!dap) {
     return 0;
   }
 
@@ -324,22 +309,42 @@ size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath,
   }
   uint32_t fsize = fsrc.fileSize();
 
-  size_t const bufsize = SAM_PAGE_SIZE;
+  size_t bufsize;
+  uint32_t const mcu_family = dap->getTargetMCU();
+
+  switch (mcu_family) {
+  case MCU_TARGET_SAMX2:
+    bufsize = Adafruit_DAP_SAM::PAGESIZE;
+    break;
+
+  case MCU_TARGET_SAMX5:
+    bufsize = Adafruit_DAP_SAMx5::PAGESIZE;
+    break;
+
+  case MCU_TARGET_NRF5X:
+  case MCU_TARGET_STM32:
+  default:
+    return false;
+  }
+
   uint8_t *buf = (uint8_t *)malloc(bufsize);
 
   if (!buf) {
-    Serial.println("Not enough memory");
+    Serial.printf("Not enough memory %u\n", bufsize);
     return 0;
   }
 
-  LCD_printf("Erasing..");
-  dap_samd21->erase();
-  LCD_printf("done");
+  // Note F4 does not need erasing
+  if (mcu_family != MCU_TARGET_STM32) {
+    LCD_printf("Erasing..");
+    dap->erase();
+    LCD_printf("done");
+  }
 
   LCD_printf("Programming..");
 
   BrainCRC32 crc32;
-  dap_samd21->program_start(addr);
+  dap->program_start(addr, fsize);
 
   while (fsrc.available()) {
     memset(buf, 0xff, bufsize); // empty it out
@@ -347,7 +352,7 @@ size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath,
     uint32_t rd_count = fsrc.read(buf, bufsize);
 
     setLED(HIGH);
-    dap_samd21->programBlock(addr, buf, bufsize);
+    dap->programBlock(addr, buf, bufsize);
     crc32.add(buf, rd_count);
     setLED(LOW);
 
@@ -355,11 +360,27 @@ size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath,
   }
 
   uint32_t target_crc;
-  dap_samd21->readCRC(fsize, &target_crc);
+
+  switch (mcu_family) {
+  case MCU_TARGET_SAMX2:
+    ((Adafruit_DAP_SAM *)dap)->readCRC(fsize, &target_crc);
+    break;
+
+  case MCU_TARGET_SAMX5:
+    ((Adafruit_DAP_SAMx5 *)dap)->readCRC(fsize, &target_crc);
+    break;
+
+  case MCU_TARGET_NRF5X:
+  case MCU_TARGET_STM32:
+  default:
+    return false;
+  }
+
   target_crc ^= 0xFFFFFFFFUL;
 
   if (target_crc != crc32.get()) {
     LCD_printf("CRC Failed");
+    Serial.printf("CRC mismtached: %08X != %08X\n", crc32.get(), target_crc);
   } else {
     LCD_printf("Done!");
   }
@@ -381,14 +402,16 @@ bool Adafruit_TestBed_Brains::SD_detected(void) {
 bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
   if (!SD_detected()) {
     LCD_printf(0, "No SD Card");
-    while (!SD_detected())
+    while (!SD_detected()) {
       delay(10);
+    }
   }
 
   if (!SD.begin(_sd_cs_pin, max_clock)) {
     LCD_printf(0, "SD init failed");
-    while (1)
+    while (1) {
       delay(10);
+    }
   }
 
   LCD_printf(0, "SD mounted");

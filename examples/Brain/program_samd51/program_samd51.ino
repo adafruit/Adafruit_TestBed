@@ -22,14 +22,14 @@
 #define BOOT_PID   0x0003
 
 // file path on SDCard to prograom
-#define TEST_FILE_PATH "samd21/metro/3505test.bin"
-//#define TESTFILECRC  0x9709b384
+#define TEST_FILE_PATH "samd51/metro/3382test.bin"
+//#define TESTFILECRC  0xB38619E4
 
 // If USB filesystem is mounted
 volatile bool is_usbfs_mounted = false;
 
 // DAP interface for SAM21
-Adafruit_DAP_SAM dap;
+Adafruit_DAP_SAMx5 dap;
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
@@ -45,7 +45,7 @@ void print_speed(size_t count, uint32_t ms) {
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
-  Serial.println("Tester Brains: SAMD21 programming !");
+  Serial.println("Tester Brains: SAMD51 programming !");
 
   // sync: wait for Brain.usbh_begin() called in core1 before accessing SD or other peripherals
   while (!Brain.usbh_inited()) delay(10);

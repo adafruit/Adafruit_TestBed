@@ -53,15 +53,26 @@ public:
   size_t rp2040_programUF2(const char *fpath);
 
   //------------- SAMD21 target -------------//
-  // DAP
-  bool samd21_connectDAP(void);
-  void samd21_disconnectDAP(void);
-  bool samd21_unlockFuse(void);
-  bool samd21_lockFuse(void);
+  bool dap_begin(Adafruit_DAP *dp);
+  bool dap_connect(void);
+  void dap_disconnect(void);
 
-  // program samd21 target with file from SDCard
+  bool dap_unprotectBoot(void);
+  bool dap_protectBoot(void);
+
+  // program dap target with file from SDCard including erasing
   // return number of programmed bytes
-  size_t samd21_programFlash(const char *fpath, uint32_t addr);
+  size_t dap_programFlash(const char *fpath, uint32_t addr);
+
+  //------------- SAMD51 target -------------//
+  //  bool samd51_connectDAP(void);
+  //  void samd51_disconnectDAP(void);
+  //  bool samd51_unlockFuse(void);
+  //  bool samd51_lockFuse(void);
+
+  // program samd21 target with file from SDCard including erasing
+  // return number of programmed bytes
+  size_t samd51_programFlash(const char *fpath, uint32_t addr);
 
   //------------- Public Variables -------------//
   LiquidCrystal lcd = LiquidCrystal(7, 8, 9, 10, 11, 12);
@@ -72,7 +83,7 @@ public:
   FatVolume USBH_FS;
   Adafruit_USBH_MSC_BlockDevice USBH_BlockDev;
 
-  Adafruit_DAP_SAM *dap_samd21;
+  Adafruit_DAP *dap;
 
 private:
   bool _inited;
@@ -87,10 +98,6 @@ private:
   int _target_swdio;
   int _target_swdclk;
 
-  bool init_dap(Adafruit_DAP *dap);
-  bool connect_dap(Adafruit_DAP *dap);
-
-  uint32_t compute_crc32(const uint8_t *data, uint32_t len);
   void lcd_write(uint8_t linenum, char buf[17]);
 };
 
