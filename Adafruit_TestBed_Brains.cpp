@@ -36,6 +36,33 @@
 
 Adafruit_TestBed_Brains Brain;
 
+// Simple and low code CRC calculation (copied from PicoOTA)
+class BrainCRC32 {
+public:
+  BrainCRC32() { crc = 0xffffffff; }
+
+  ~BrainCRC32() {}
+
+  void add(const void *d, uint32_t len) {
+    const uint8_t *data = (const uint8_t *)d;
+    for (uint32_t i = 0; i < len; i++) {
+      crc ^= data[i];
+      for (int j = 0; j < 8; j++) {
+        if (crc & 1) {
+          crc = (crc >> 1) ^ 0xedb88320;
+        } else {
+          crc >>= 1;
+        }
+      }
+    }
+  }
+
+  uint32_t get() { return ~crc; }
+
+private:
+  uint32_t crc;
+};
+
 /**************************************************************************/
 /*!
     @brief  Initializer, sets up the timestamp, neopixels, piezo, led,
@@ -185,34 +212,6 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
 //--------------------------------------------------------------------+
 // SAMD21 Target
 //--------------------------------------------------------------------+
-
-// Simple and low code CRC calculation (copied from PicoOTA)
-class BrainCRC32 {
-public:
-  BrainCRC32() { crc = 0xffffffff; }
-
-  ~BrainCRC32() {}
-
-  void add(const void *d, uint32_t len) {
-    const uint8_t *data = (const uint8_t *)d;
-    for (uint32_t i = 0; i < len; i++) {
-      crc ^= data[i];
-      for (int j = 0; j < 8; j++) {
-        if (crc & 1) {
-          crc = (crc >> 1) ^ 0xedb88320;
-        } else {
-          crc >>= 1;
-        }
-      }
-    }
-  }
-
-  uint32_t get() { return ~crc; }
-
-private:
-  uint32_t crc;
-};
-
 static void dap_err_hanlder(const char *msg) { Brain.LCD_error(msg, NULL); }
 
 bool Adafruit_TestBed_Brains::init_dap(Adafruit_DAP *dap) {
@@ -266,9 +265,32 @@ void Adafruit_TestBed_Brains::samd21_disconnectDAP(void) {
   dap_samd21->deselect();
 }
 
+static void print_fuse(Adafruit_DAP_SAM *dap) {
+  uint32_t fuse_low = dap->_USER_ROW.fuseParts[0];
+  uint32_t fuse_high = dap->_USER_ROW.fuseParts[1];
+
+  Serial.printf("\tFuse high: 0x%08X\n", fuse_high);
+  Serial.printf("\tFuse low : 0x%08X\n", fuse_low);
+  Serial.printf("\tBoot protect: 0x%02X\n", dap->_USER_ROW.bit.BOOTPROT);
+}
+
 bool Adafruit_TestBed_Brains::samd21_unlockFuse(void) {
   if (!dap_samd21) {
     return false;
+  }
+
+  LCD_printf("Unlock chip...");
+
+  dap_samd21->fuseRead();
+
+  print_fuse(dap_samd21);
+
+  if (dap_samd21->_USER_ROW.bit.BOOTPROT != 0x07) {
+    // unlock it!
+    dap_samd21->_USER_ROW.bit.BOOTPROT = 0x07;
+    dap_samd21->fuseWrite();
+
+    print_fuse(dap_samd21);
   }
 
   return true;
@@ -279,6 +301,13 @@ bool Adafruit_TestBed_Brains::samd21_lockFuse(void) {
     return false;
   }
 
+  LCD_printf("Lock chip...");
+
+  dap_samd21->fuseRead();
+  dap_samd21->_USER_ROW.bit.BOOTPROT = 0x02;
+  dap_samd21->fuseWrite();
+
+  print_fuse(dap_samd21);
   return true;
 }
 
@@ -303,11 +332,11 @@ size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath,
     return 0;
   }
 
-  LCD_printf(0, "Erasing..");
+  LCD_printf("Erasing..");
   dap_samd21->erase();
-  LCD_printf(0, "Erasing...done");
+  LCD_printf("done");
 
-  LCD_printf(0, "Programming..");
+  LCD_printf("Programming..");
 
   BrainCRC32 crc32;
   dap_samd21->program_start(addr);
@@ -330,9 +359,9 @@ size_t Adafruit_TestBed_Brains::samd21_programFlash(const char *fpath,
   target_crc ^= 0xFFFFFFFFUL;
 
   if (target_crc != crc32.get()) {
-    LCD_printf(1, "CRC Failed");
+    LCD_printf("CRC Failed");
   } else {
-    LCD_printf(1, "Done!");
+    LCD_printf("Done!");
   }
 
   free(buf);

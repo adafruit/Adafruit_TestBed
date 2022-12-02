@@ -57,17 +57,22 @@ void setup() {
     Brain.SD.ls(LS_R | LS_SIZE);
   }
 
-  uint32_t ms = millis();
 
   Brain.targetReset();
 
   Brain.samd21_connectDAP();
+  Brain.samd21_unlockFuse();
+
+  uint32_t ms = millis();
   size_t copied_bytes = Brain.samd21_programFlash(TEST_FILE_PATH, 0);
+  ms = millis() - ms;
+  print_speed(copied_bytes, ms);
+
+  Brain.samd21_lockFuse();
   Brain.samd21_disconnectDAP();
 
   Brain.targetReset();
 
-  print_speed(copied_bytes, millis() - ms);
 }
 
 void loop() {
