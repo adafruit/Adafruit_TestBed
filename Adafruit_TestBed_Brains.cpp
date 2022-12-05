@@ -209,6 +209,7 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
   return copied_bytes;
 }
 
+#if 0
 //--------------------------------------------------------------------+
 // SAMD21 Target
 //--------------------------------------------------------------------+
@@ -390,6 +391,8 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 
   return fsize;
 }
+
+#endif
 
 //--------------------------------------------------------------------+
 // SD Card

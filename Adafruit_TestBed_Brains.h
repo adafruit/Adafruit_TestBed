@@ -52,6 +52,7 @@ public:
   // return number of copied bytes (typically uf2 file size)
   size_t rp2040_programUF2(const char *fpath);
 
+#if 0
   //------------- SAMD21 target -------------//
   bool dap_begin(Adafruit_DAP *dp);
   bool dap_connect(void);
@@ -73,6 +74,7 @@ public:
   // program samd21 target with file from SDCard including erasing
   // return number of programmed bytes
   size_t samd51_programFlash(const char *fpath, uint32_t addr);
+#endif
 
   //------------- Public Variables -------------//
   LiquidCrystal lcd = LiquidCrystal(7, 8, 9, 10, 11, 12);
