@@ -37,6 +37,7 @@ void Adafruit_TestBed::begin(void) {
   analogRef = 5.0;
 #elif defined(ARDUINO_ARCH_RP2040)
   analogBits = 4096;
+  analogReadResolution(12);
 #elif defined(ARDUINO_ARCH_ESP32)
   analogBits = 4096;
   analogReadResolution(12);
