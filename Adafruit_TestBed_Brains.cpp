@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-#ifdef ARDUINO_ARCH_RP2040
+#ifdef ARDUINO_RASPBERRY_PI_PICO
 
 #include "SdFat.h"
 #include "pio_usb.h"

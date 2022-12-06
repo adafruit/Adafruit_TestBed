@@ -1,7 +1,7 @@
 #ifndef ADAFRUIT_TESTBED_BRAINS_H
 #define ADAFRUIT_TESTBED_BRAINS_H
 
-#ifdef ARDUINO_ARCH_RP2040
+#ifdef ARDUINO_RASPBERRY_PI_PICO
 
 #include "Adafruit_TestBed.h"
 #include "SdFat.h"
