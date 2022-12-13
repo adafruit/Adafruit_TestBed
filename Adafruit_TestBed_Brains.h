@@ -30,6 +30,8 @@ public:
   void LCD_error(const char *errmsg1, const char *errmsg2);
   void LCD_info(const char *msg1, const char *msg2);
 
+  void setColor(uint32_t color);
+
   // SD
   bool SD_detected(void);
   bool SD_begin(uint32_t max_clock = SD_SCK_MHZ(16));

@@ -96,8 +96,13 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
-  // neopixel is already set up
+  // skip Adafruit_Neopixel by setting neopixelNum = 0 since
+  // we will bit-banging due to the pio conflict with usb host
+  neopixelNum = 0;
   Adafruit_TestBed::begin();
+
+  neopixelNum = 1;
+  pinMode(neopixelPin, OUTPUT);
 
   pinMode(_target_rst, OUTPUT);
   digitalWrite(_target_rst, HIGH);
@@ -108,7 +113,7 @@ void Adafruit_TestBed_Brains::begin(void) {
 
   analogReadResolution(12);
 
-  pixels->setBrightness(255);
+  // pixels->setBrightness(255); TODO can use variable to take color percentage in setColor()
   setColor(0xFFFFFF);
 
   lcd.begin(16, 2);
@@ -424,6 +429,82 @@ bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
 //--------------------------------------------------------------------+
 // LCD
 //--------------------------------------------------------------------+
+
+// 1s = 1.000.000 us --> 120.000.000 nop
+// 1 us -> 120 nop
+// full frame, 1.25 us -> 150 nop
+//  - T1H 0,76 us -> 91 nop
+//  - T0H 0,36 us -> 43 nop
+
+void Adafruit_TestBed_Brains::setColor(uint32_t color) {
+  uint8_t r = (uint8_t)(color >> 16), g = (uint8_t)(color >> 8), b = (uint8_t) color;
+  uint8_t buf[3] = { r, g, b };
+
+  uint8_t *ptr, *end, p, bitMask;
+  uint32_t const pinMask = 1ul << neopixelPin;
+
+  ptr = buf;
+  end = ptr + 3;
+  p = *ptr++;
+  bitMask = 0x80;
+
+  // 800 KHz
+  for (;;) {
+    if (p & bitMask) {
+      // T1H 0,76 us -> 91 nop
+      sio_hw->gpio_set = pinMask;
+      asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop;");
+
+      // 150 - 91 = 59 nop
+      sio_hw->gpio_clr = pinMask;
+      asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+    } else {
+      // T0H 0,36 us -> 43 nop
+      sio_hw->gpio_set = pinMask;
+      asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop;");
+
+      // 150 - 43 = 107 nop
+      sio_hw->gpio_clr = pinMask;
+      asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+          "nop; nop; nop; nop; nop; nop; nop;");
+    }
+
+    // if a full byte is sent, next to another byte
+    if (0 == (bitMask >>= 1)) {
+      if (ptr >= end)
+        break;
+      p = *ptr++;
+      bitMask = 0x80;
+    }
+  }
+}
 
 void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {
   // fill the rest with spaces
