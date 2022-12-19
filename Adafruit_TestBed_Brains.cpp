@@ -113,7 +113,8 @@ void Adafruit_TestBed_Brains::begin(void) {
 
   analogReadResolution(12);
 
-  // pixels->setBrightness(255); TODO can use variable to take color percentage in setColor()
+  // pixels->setBrightness(255); TODO can use variable to take color percentage
+  // in setColor()
   setColor(0xFFFFFF);
 
   lcd.begin(16, 2);
@@ -437,8 +438,9 @@ bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
 //  - T0H 0,36 us -> 43 nop
 
 void Adafruit_TestBed_Brains::setColor(uint32_t color) {
-  uint8_t r = (uint8_t)(color >> 16), g = (uint8_t)(color >> 8), b = (uint8_t) color;
-  uint8_t buf[3] = { r, g, b };
+  uint8_t r = (uint8_t)(color >> 16), g = (uint8_t)(color >> 8),
+          b = (uint8_t)color;
+  uint8_t buf[3] = {r, g, b};
 
   uint8_t *ptr, *end, p, bitMask;
   uint32_t const pinMask = 1ul << neopixelPin;
