@@ -10,6 +10,9 @@
 
 #include "Adafruit_TestBed_Brains.h"
 
+// CDC Host object
+Adafruit_USBH_CDC  SerialHost;
+
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
 //--------------------------------------------------------------------+
@@ -18,7 +21,22 @@ void setup() {
 }
 
 void loop() {
+  uint8_t buf[64];
 
+  // Serial -> SerialHost
+  if (Serial.available()) {
+    size_t count = Serial.read(buf, sizeof(buf));
+    if ( SerialHost && SerialHost.connected() ) {
+      SerialHost.write(buf, count);
+      SerialHost.flush();
+    }
+  }
+
+  // SerialHost -> Serial
+  if ( SerialHost.connected() && SerialHost.available() ) {
+    size_t count = SerialHost.read(buf, sizeof(buf));
+    Serial.write(buf, count);
+  }
 }
 
 //--------------------------------------------------------------------+
@@ -29,11 +47,19 @@ void loop() {
 // NOTE: Brain.begin() should be called here as well to prevent race condition
 void setup1() {
   Serial.begin(115200);
-  // while (!Serial) delay(10);
+  while (!Serial) delay(10);
+
   Serial.println("Tester Brains USB Host test!");
 
+  // Init Brain peripherals
   Brain.begin();
+
+  // Init Brain USB Host
   Brain.usbh_begin();
+
+  // Since we only support 1 CDC interface with Tester (also CFG_TUH_CDC = 1)
+  // the index will always be 0 for SerialHost
+  SerialHost.begin(0);
 
   Brain.LCD_printf(0, "No USB attached");
   Brain.LCD_printf(1, "Plug your device");
@@ -43,6 +69,11 @@ void setup1() {
 void loop1()
 {
   Brain.USBHost.task();
+
+  // periodically flush SerialHost if connected
+  if ( SerialHost && SerialHost.connected() ) {
+    SerialHost.flush();
+  }
 }
 
 //--------------------------------------------------------------------+
@@ -58,7 +89,8 @@ void tuh_mount_cb (uint8_t daddr)
 
   Serial.printf("Device attached, address = %d\r\n", daddr);
   Brain.LCD_printf(0, "USBID %04x:%04x", vid, pid);
-  Brain.LCD_printf(1, "MSC %u HID %u", tuh_msc_mounted(daddr), tuh_hid_instance_count(daddr));
+
+  Brain.LCD_printf(1, "MS %u HID %u CDC %u", tuh_msc_mounted(daddr), tuh_hid_instance_count(daddr), SerialHost.mounted());
 }
 
 /// Invoked when device is unmounted (bus reset/unplugged)

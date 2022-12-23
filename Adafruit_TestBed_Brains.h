@@ -83,7 +83,10 @@ public:
   SdFat SD;
   SdSpiConfig SD_CONFIG = SdSpiConfig(17, SHARED_SPI, SD_SCK_MHZ(16));
 
+  // USB host
   Adafruit_USBH_Host USBHost;
+
+  // Host MSC
   FatVolume USBH_FS;
   Adafruit_USBH_MSC_BlockDevice USBH_BlockDev;
 
