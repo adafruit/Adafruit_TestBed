@@ -242,7 +242,7 @@ bool Adafruit_TestBed_Brains::dap_connect(void) {
     return false;
   }
 
-  LCD_printf(0, "Connecting...");
+  LCD_printf("Connecting...");
   if (!dap->targetConnect()) {
     return false;
   }
@@ -250,10 +250,12 @@ bool Adafruit_TestBed_Brains::dap_connect(void) {
   uint32_t dsu_did;
   if (!dap->select(&dsu_did)) {
     Serial.printf("Unknown MCU found 0x%08X\n", dsu_did);
-    LCD_printf(0, "Unknown MCU");
+    LCD_printf("Unknown MCU");
+
     while (1) {
       delay(1);
     }
+
     return false;
   }
 
