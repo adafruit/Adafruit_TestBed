@@ -215,9 +215,8 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
   return copied_bytes;
 }
 
-#if 0
 //--------------------------------------------------------------------+
-// SAMD21 Target
+// DAP Target
 //--------------------------------------------------------------------+
 static void dap_err_hanlder(const char *msg) { Brain.LCD_error(msg, NULL); }
 
@@ -317,19 +316,19 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
   uint32_t fsize = fsrc.fileSize();
 
   size_t bufsize;
-  uint32_t const mcu_family = dap->getTargetMCU();
+  uint32_t const dap_typeid = dap->getTypeID();
 
-  switch (mcu_family) {
-  case MCU_TARGET_SAMX2:
+  switch (dap_typeid) {
+  case DAP_TYPEID_SAM:
     bufsize = Adafruit_DAP_SAM::PAGESIZE;
     break;
 
-  case MCU_TARGET_SAMX5:
+  case DAP_TYPEID_SAMX5:
     bufsize = Adafruit_DAP_SAMx5::PAGESIZE;
     break;
 
-  case MCU_TARGET_NRF5X:
-  case MCU_TARGET_STM32:
+  case DAP_TYPEID_NRF5X:
+  case DAP_TYPEID_STM32:
   default:
     return false;
   }
@@ -341,8 +340,8 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
     return 0;
   }
 
-  // Note F4 does not need erasing
-  if (mcu_family != MCU_TARGET_STM32) {
+  // NOTE: STM32 does erase on-the-fly
+  if (dap_typeid != DAP_TYPEID_STM32) {
     LCD_printf("Erasing..");
     dap->erase();
     LCD_printf("done");
@@ -368,17 +367,17 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 
   uint32_t target_crc;
 
-  switch (mcu_family) {
-  case MCU_TARGET_SAMX2:
+  switch (dap_typeid) {
+  case DAP_TYPEID_SAM:
     ((Adafruit_DAP_SAM *)dap)->readCRC(fsize, &target_crc);
     break;
 
-  case MCU_TARGET_SAMX5:
+  case DAP_TYPEID_SAMX5:
     ((Adafruit_DAP_SAMx5 *)dap)->readCRC(fsize, &target_crc);
     break;
 
-  case MCU_TARGET_NRF5X:
-  case MCU_TARGET_STM32:
+  case DAP_TYPEID_NRF5X:
+  case DAP_TYPEID_STM32:
   default:
     return false;
   }
@@ -398,7 +397,6 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
   return fsize;
 }
 
-#endif
 
 //--------------------------------------------------------------------+
 // SD Card

@@ -1,9 +1,9 @@
 // This sketch program SAMD with bin file from SDCard using Adafruit_DAP
 // Hardware wiring:
-// - Brain's Target Reset to SAMD Reset
-// - Brain's Target SWDIO to SAMD SWDIO
-// - Brain's Target SWCLK to SAMD SWCLK
-// - Brain's USB host to SAMD USB interface
+// - Brain's header Reset <-> Target Reset
+// - Brain's header SWDIO <-> Target SWDIO
+// - Brain's header SWCLK <-> Target SWCLK
+// - Brain's USB host to Target USB
 
 // required for Host MSC block device
 #include "SdFat.h"
@@ -59,7 +59,6 @@ void setup() {
     Serial.printf("Card size = %0.1f GB\n", 0.000000512 * Brain.SD.card()->sectorCount());
     Brain.SD.ls(LS_R | LS_SIZE);
   }
-
 
   Brain.targetReset();
 
