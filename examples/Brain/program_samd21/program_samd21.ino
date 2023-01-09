@@ -25,9 +25,6 @@
 #define TEST_FILE_PATH "samd21/metro/3505test.bin"
 //#define TESTFILECRC  0x9709b384
 
-// If USB filesystem is mounted
-volatile bool is_usbfs_mounted = false;
-
 // DAP interface for SAM21
 Adafruit_DAP_SAM dap;
 
@@ -121,27 +118,6 @@ void tuh_umount_cb(uint8_t dev_addr)
 {
   (void) dev_addr;
   Brain.LCD_printf(1, "No USB Device");
-}
-
-// Invoked when a device with MassStorage interface is mounted
-void tuh_msc_mount_cb(uint8_t dev_addr)
-{
-  uint16_t vid, pid;
-  tuh_vid_pid_get(dev_addr, &vid, &pid);
-
-  if ( vid == BOOT_VID && pid == BOOT_PID ) {
-    is_usbfs_mounted = Brain.usbh_mountFS(dev_addr);
-    if (is_usbfs_mounted) {
-      Brain.LCD_printf(1, "RP2 Boot mounted");
-    }
-  }
-}
-
-// Invoked when a device with MassStorage interface is unmounted
-void tuh_msc_umount_cb(uint8_t dev_addr)
-{
-  is_usbfs_mounted = false;
-  Brain.usbh_umountFS(dev_addr);
 }
 
 }
