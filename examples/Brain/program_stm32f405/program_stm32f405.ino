@@ -22,10 +22,10 @@
 #define BOOT_PID   0x0003
 
 // file path on SDCard to prograom
-#define TEST_FILE_PATH "nrf/feather_nrf52840/bleblink.bin"
+#define TEST_FILE_PATH "stm32f4/feather_stm32f405/tinyuf2-feather_stm32f405_express.bin"
 
 // DAP interface for nRF5x
-Adafruit_DAP_nRF5x dap;
+Adafruit_DAP_STM32 dap;
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
@@ -41,7 +41,7 @@ void print_speed(size_t count, uint32_t ms) {
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
-  Serial.println("Tester Brains: nRF52840 programming !");
+  Serial.println("Tester Brains: STM32F405 programming !");
 
   // sync: wait for Brain.usbh_begin() called in core1 before accessing SD or other peripherals
   while (!Brain.usbh_inited()) delay(10);

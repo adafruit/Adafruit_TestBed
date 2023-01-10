@@ -235,7 +235,7 @@ bool Adafruit_TestBed_Brains::dap_connect(void) {
   uint32_t dsu_did;
   if (!dap->select(&dsu_did)) {
     setColor(0xFF0000);
-    LCD_printf(0, "Unknown MCU found");
+    LCD_printf(0, "Unknown MCU");
     LCD_printf(1, "ID = %08X", dsu_did);
 
     while (1) {
@@ -245,9 +245,11 @@ bool Adafruit_TestBed_Brains::dap_connect(void) {
     return false;
   }
 
+  uint32_t const page_size = dap->target_device.n_pages ? (dap->target_device.flash_size/dap->target_device.n_pages) : 0;
+
   Serial.printf("Found Target: %s, ID = %08X\n", dap->target_device.name, dsu_did);
   Serial.printf("Flash size: %u, Page Num: %u, Page Size: %u\n",
-                dap->target_device.flash_size, dap->target_device.n_pages, dap->target_device.flash_size/dap->target_device.n_pages);
+                dap->target_device.flash_size, dap->target_device.n_pages, page_size);
 
   return true;
 }
@@ -289,7 +291,10 @@ bool Adafruit_TestBed_Brains::dap_eraseChip(void) {
   uint32_t const dap_typeid = dap->getTypeID();
 
   // NOTE: STM32 does erase on-the-fly therefore erasing is not needed
-  if (dap_typeid != DAP_TYPEID_STM32) {
+  if (dap_typeid == DAP_TYPEID_STM32) {
+   LCD_printf("Erasing..skipped");
+  }
+  else{
     LCD_printf("Erasing..");
     uint32_t ms = millis();
 
@@ -332,6 +337,9 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
     break;
 
   case DAP_TYPEID_STM32:
+    bufsize = 4096;
+    break;
+
   default:
     return false;
   }
