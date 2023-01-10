@@ -64,6 +64,9 @@ void setup() {
 
   Brain.dap_unprotectBoot();
 
+  // erase chip before programming
+  Brain.dap_eraseChip();
+
   uint32_t ms = millis();
   size_t copied_bytes = Brain.dap_programFlash(TEST_FILE_PATH, 0);
   ms = millis() - ms;

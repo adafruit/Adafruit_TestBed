@@ -62,7 +62,9 @@ public:
   bool dap_unprotectBoot(void);
   bool dap_protectBoot(void);
 
-  // program dap target with file from SDCard including erasing
+  bool dap_eraseChip(void);
+
+  // program dap target with file from SDCard
   // return number of programmed bytes
   size_t dap_programFlash(const char *fpath, uint32_t addr);
 
