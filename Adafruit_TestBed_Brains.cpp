@@ -245,11 +245,16 @@ bool Adafruit_TestBed_Brains::dap_connect(void) {
     return false;
   }
 
-  uint32_t const page_size = dap->target_device.n_pages ? (dap->target_device.flash_size/dap->target_device.n_pages) : 0;
+  uint32_t const page_size =
+      dap->target_device.n_pages
+          ? (dap->target_device.flash_size / dap->target_device.n_pages)
+          : 0;
 
-  Serial.printf("Found Target: %s, ID = %08X\n", dap->target_device.name, dsu_did);
+  Serial.printf("Found Target: %s, ID = %08X\n", dap->target_device.name,
+                dsu_did);
   Serial.printf("Flash size: %u, Page Num: %u, Page Size: %u\n",
-                dap->target_device.flash_size, dap->target_device.n_pages, page_size);
+                dap->target_device.flash_size, dap->target_device.n_pages,
+                page_size);
 
   return true;
 }
@@ -292,9 +297,8 @@ bool Adafruit_TestBed_Brains::dap_eraseChip(void) {
 
   // NOTE: STM32 does erase on-the-fly therefore erasing is not needed
   if (dap_typeid == DAP_TYPEID_STM32) {
-   LCD_printf("Erasing..skipped");
-  }
-  else{
+    LCD_printf("Erasing..skipped");
+  } else {
     LCD_printf("Erasing..");
     uint32_t ms = millis();
 
@@ -384,7 +388,6 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 
   return fsize;
 }
-
 
 //--------------------------------------------------------------------+
 // SD Card
