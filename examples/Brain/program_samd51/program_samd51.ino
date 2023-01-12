@@ -1,9 +1,9 @@
 // This sketch program SAMD with bin file from SDCard using Adafruit_DAP
 // Hardware wiring:
-// - Brain's Target Reset to SAMD Reset
-// - Brain's Target SWDIO to SAMD SWDIO
-// - Brain's Target SWCLK to SAMD SWCLK
-// - Brain's USB host to SAMD USB interface
+// - Brain's header Reset <-> Target Reset
+// - Brain's header SWDIO <-> Target SWDIO
+// - Brain's header SWCLK <-> Target SWCLK
+// - Brain's USB host to Target USB
 
 // required for Host MSC block device
 #include "SdFat.h"
@@ -25,10 +25,7 @@
 #define TEST_FILE_PATH "samd51/metro/3382test.bin"
 //#define TESTFILECRC  0xB38619E4
 
-// If USB filesystem is mounted
-volatile bool is_usbfs_mounted = false;
-
-// DAP interface for SAM21
+// DAP interface for SAMD51
 Adafruit_DAP_SAMx5 dap;
 
 //--------------------------------------------------------------------+
@@ -60,13 +57,15 @@ void setup() {
     Brain.SD.ls(LS_R | LS_SIZE);
   }
 
-
   Brain.targetReset();
 
   Brain.dap_begin(&dap);
   Brain.dap_connect();
 
   Brain.dap_unprotectBoot();
+
+  // erase chip before programming
+  Brain.dap_eraseChip();
 
   uint32_t ms = millis();
   size_t copied_bytes = Brain.dap_programFlash(TEST_FILE_PATH, 0);
@@ -122,27 +121,6 @@ void tuh_umount_cb(uint8_t dev_addr)
 {
   (void) dev_addr;
   Brain.LCD_printf(1, "No USB Device");
-}
-
-// Invoked when a device with MassStorage interface is mounted
-void tuh_msc_mount_cb(uint8_t dev_addr)
-{
-  uint16_t vid, pid;
-  tuh_vid_pid_get(dev_addr, &vid, &pid);
-
-  if ( vid == BOOT_VID && pid == BOOT_PID ) {
-    is_usbfs_mounted = Brain.usbh_mountFS(dev_addr);
-    if (is_usbfs_mounted) {
-      Brain.LCD_printf(1, "RP2 Boot mounted");
-    }
-  }
-}
-
-// Invoked when a device with MassStorage interface is unmounted
-void tuh_msc_umount_cb(uint8_t dev_addr)
-{
-  is_usbfs_mounted = false;
-  Brain.usbh_umountFS(dev_addr);
 }
 
 }

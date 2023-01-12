@@ -122,21 +122,6 @@ void Adafruit_TestBed_Brains::begin(void) {
   lcd.home();
   lcd.noCursor();
 
-  //  if (SD_detected()) {
-  //    Serial.print("SD inserted...");
-  //    if (!SD_begin()) {
-  //      Serial.println("Could not init SD!");
-  //    } else {
-  //      uint32_t SDsize = SD.card()->sectorCount();
-  //      if (SDsize == 0) {
-  //        Serial.println("Can't determine the card size");
-  //      } else {
-  //        Serial.printf("Card size = %0.1f GB\n", 0.000000512 *
-  //        (float)SDsize); Serial.println("Files found (date time size
-  //        name):"); SD.ls(LS_R | LS_DATE | LS_SIZE);
-  //      }
-  //    }
-  //  }
   _inited = true;
 }
 
@@ -215,9 +200,8 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
   return copied_bytes;
 }
 
-#if 0
 //--------------------------------------------------------------------+
-// SAMD21 Target
+// DAP Target
 //--------------------------------------------------------------------+
 static void dap_err_hanlder(const char *msg) { Brain.LCD_error(msg, NULL); }
 
@@ -243,24 +227,34 @@ bool Adafruit_TestBed_Brains::dap_connect(void) {
     return false;
   }
 
-  LCD_printf(0, "Connecting...");
+  LCD_printf("Connecting...");
   if (!dap->targetConnect()) {
     return false;
   }
 
   uint32_t dsu_did;
   if (!dap->select(&dsu_did)) {
-    Serial.printf("Unknown MCU found 0x%08X\n", dsu_did);
+    setColor(0xFF0000);
     LCD_printf(0, "Unknown MCU");
+    LCD_printf(1, "ID = %08X", dsu_did);
+
     while (1) {
       delay(1);
     }
+
     return false;
   }
 
-  Serial.printf("Found Target: %s\n", dap->target_device.name);
-  Serial.printf("Flash size: %u, Flash pages: %u\n",
-                dap->target_device.flash_size, dap->target_device.n_pages);
+  uint32_t const page_size =
+      dap->target_device.n_pages
+          ? (dap->target_device.flash_size / dap->target_device.n_pages)
+          : 0;
+
+  Serial.printf("Found Target: %s, ID = %08X\n", dap->target_device.name,
+                dsu_did);
+  Serial.printf("Flash size: %u, Page Num: %u, Page Size: %u\n",
+                dap->target_device.flash_size, dap->target_device.n_pages,
+                page_size);
 
   return true;
 }
@@ -271,15 +265,6 @@ void Adafruit_TestBed_Brains::dap_disconnect(void) {
   }
   dap->deselect();
 }
-
-// static void print_fuse(Adafruit_DAP_SAM *dap) {
-//   uint32_t fuse_low = dap->_USER_ROW.fuseParts[0];
-//   uint32_t fuse_high = dap->_USER_ROW.fuseParts[1];
-//
-//   Serial.printf("\tFuse high: 0x%08X\n", fuse_high);
-//   Serial.printf("\tFuse low : 0x%08X\n", fuse_low);
-//   Serial.printf("\tBoot protect: 0x%02X\n", dap->_USER_ROW.bit.BOOTPROT);
-// }
 
 bool Adafruit_TestBed_Brains::dap_unprotectBoot(void) {
   if (!dap) {
@@ -303,6 +288,29 @@ bool Adafruit_TestBed_Brains::dap_protectBoot(void) {
   return ret;
 }
 
+bool Adafruit_TestBed_Brains::dap_eraseChip(void) {
+  if (!dap) {
+    return false;
+  }
+
+  uint32_t const dap_typeid = dap->getTypeID();
+
+  // NOTE: STM32 does erase on-the-fly therefore erasing is not needed
+  if (dap_typeid == DAP_TYPEID_STM32) {
+    LCD_printf("Erasing..skipped");
+  } else {
+    LCD_printf("Erasing..");
+    uint32_t ms = millis();
+
+    dap->erase();
+
+    ms = millis() - ms;
+    LCD_printf("done in %.02fs", ms / 1000.0F);
+  }
+
+  return true;
+}
+
 size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
                                                  uint32_t addr) {
   if (!dap) {
@@ -317,19 +325,25 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
   uint32_t fsize = fsrc.fileSize();
 
   size_t bufsize;
-  uint32_t const mcu_family = dap->getTargetMCU();
+  uint32_t const dap_typeid = dap->getTypeID();
 
-  switch (mcu_family) {
-  case MCU_TARGET_SAMX2:
+  switch (dap_typeid) {
+  case DAP_TYPEID_SAM:
     bufsize = Adafruit_DAP_SAM::PAGESIZE;
     break;
 
-  case MCU_TARGET_SAMX5:
+  case DAP_TYPEID_SAMX5:
     bufsize = Adafruit_DAP_SAMx5::PAGESIZE;
     break;
 
-  case MCU_TARGET_NRF5X:
-  case MCU_TARGET_STM32:
+  case DAP_TYPEID_NRF5X:
+    bufsize = 4096;
+    break;
+
+  case DAP_TYPEID_STM32:
+    bufsize = 4096;
+    break;
+
   default:
     return false;
   }
@@ -341,49 +355,26 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
     return 0;
   }
 
-  // Note F4 does not need erasing
-  if (mcu_family != MCU_TARGET_STM32) {
-    LCD_printf("Erasing..");
-    dap->erase();
-    LCD_printf("done");
-  }
-
   LCD_printf("Programming..");
 
   BrainCRC32 crc32;
   dap->program_start(addr, fsize);
 
+  uint32_t addr_tmp = addr;
   while (fsrc.available()) {
     memset(buf, 0xff, bufsize); // empty it out
 
     uint32_t rd_count = fsrc.read(buf, bufsize);
 
     setLED(HIGH);
-    dap->programBlock(addr, buf, bufsize);
+    dap->programBlock(addr_tmp, buf, bufsize);
     crc32.add(buf, rd_count);
     setLED(LOW);
 
-    addr += bufsize;
+    addr_tmp += bufsize;
   }
 
-  uint32_t target_crc;
-
-  switch (mcu_family) {
-  case MCU_TARGET_SAMX2:
-    ((Adafruit_DAP_SAM *)dap)->readCRC(fsize, &target_crc);
-    break;
-
-  case MCU_TARGET_SAMX5:
-    ((Adafruit_DAP_SAMx5 *)dap)->readCRC(fsize, &target_crc);
-    break;
-
-  case MCU_TARGET_NRF5X:
-  case MCU_TARGET_STM32:
-  default:
-    return false;
-  }
-
-  target_crc ^= 0xFFFFFFFFUL;
+  uint32_t target_crc = dap->computeFlashCRC32(addr, fsize);
 
   if (target_crc != crc32.get()) {
     LCD_printf("CRC Failed");
@@ -397,8 +388,6 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 
   return fsize;
 }
-
-#endif
 
 //--------------------------------------------------------------------+
 // SD Card
@@ -517,6 +506,7 @@ void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {
 
   Serial.print("LCD: ");
   Serial.println(linebuf);
+  Serial.flush();
 
   _lcd_line = 1 - linenum;
 }
