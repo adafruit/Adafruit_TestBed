@@ -93,6 +93,7 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
   _target_swdclk = 3;
 
   dap = NULL;
+  esp32boot = NULL;
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
@@ -390,6 +391,104 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 }
 
 //--------------------------------------------------------------------+
+// ESP32 Target
+//--------------------------------------------------------------------+
+
+void Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass* bootrom, uint32_t baudrate) {
+  esp32boot = bootrom;
+
+  LCD_printf("Syncing ESP32");
+  if (!esp32boot->begin(baudrate)) {
+    LCD_printf_error("Sync failed!");
+  }
+  LCD_printf("Synced OK");
+}
+
+#define MD5_TEST
+size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath, uint32_t addr) {
+  if (!esp32boot) {
+    return 0;
+  }
+
+  enum { MAX_PAYLOAD_SIZE = 1024 };
+
+  uint8_t *buf = (uint8_t *)malloc(MAX_PAYLOAD_SIZE);
+  if (!buf) {
+    LCD_printf_error("No memory %u\n", MAX_PAYLOAD_SIZE);
+    return 0;
+  }
+
+  File32 fsrc = SD.open(fpath);
+  if (!fsrc) {
+    Serial.printf("SD: cannot open file: %s\r\n", fpath);
+    return 0;
+  }
+  uint32_t fsize = fsrc.fileSize();
+  uint32_t total_count = 0;
+
+#ifndef MD5_TEST
+  if (!esp32boot->beginFlash(addr, fsize, MAX_PAYLOAD_SIZE)) {
+    LCD_printf_error("beginFlash failed!");
+  }else
+#endif
+  {
+    LCD_printf("ESP32 packt %u", fsize / MAX_PAYLOAD_SIZE);
+
+    MD5Builder md5;
+    md5.begin();
+
+    //------------- Flashing  -------------//
+    while (fsrc.available()) {
+      memset(buf, 0xff, MAX_PAYLOAD_SIZE); // empty it out
+      uint32_t rd_count = fsrc.read(buf, MAX_PAYLOAD_SIZE);
+
+#ifndef MD5_TEST
+      setLED(HIGH);
+      Serial.printf("#");
+      if (!esp32boot->dataFlash(buf, MAX_PAYLOAD_SIZE)) {
+        LCD_printf_error("Failed to flash")
+        break;
+      }
+      setLED(LOW);
+#endif
+
+      md5.add(buf, rd_count);
+      total_count += rd_count;
+    }
+    Serial.println();
+
+    //------------- MD5 verification -------------//
+    md5.calculate();
+    Serial.printf("md5 = %s\r\n", md5.toString().c_str());
+
+    uint8_t file_md5[16];
+    md5.getBytes(file_md5);
+
+    uint8_t esp_md5[16];
+    esp32boot->md5Flash(addr, fsize, esp_md5);
+
+    if (memcmp(file_md5, esp_md5, 16)) {
+      LCD_printf_error("MD5 mismatched!!\r\n");
+
+      Serial.printf("File: ");
+      for(size_t i=0; i<16; i++) Serial.printf("%02X ", file_md5[i]);
+      Serial.println();
+
+      Serial.printf("ESP : ");
+      for(size_t i=0; i<16; i++) Serial.printf("%02X ", esp_md5[i]);
+      Serial.println();
+
+    }
+  }
+
+
+  free(buf);
+  fsrc.close();
+
+  return total_count;
+}
+
+//--------------------------------------------------------------------+
 // SD Card
 //--------------------------------------------------------------------+
 
@@ -511,27 +610,27 @@ void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {
   _lcd_line = 1 - linenum;
 }
 
+#define _LCD_PRINTF(_line, _format)   do { \
+  char linebuf[17]; \
+  va_list ap; \
+  va_start(ap, _format); \
+  vsnprintf(linebuf, sizeof(linebuf), _format, ap); \
+  va_end(ap); \
+  lcd_write(_line, linebuf); \
+} while(0)
+
 void Adafruit_TestBed_Brains::LCD_printf(uint8_t linenum, const char format[],
                                          ...) {
-  char linebuf[17];
-
-  va_list ap;
-  va_start(ap, format);
-  vsnprintf(linebuf, sizeof(linebuf), format, ap);
-  va_end(ap);
-
-  lcd_write(linenum, linebuf);
+  _LCD_PRINTF(linenum, format);
 }
 
 void Adafruit_TestBed_Brains::LCD_printf(const char format[], ...) {
-  char linebuf[17];
+  _LCD_PRINTF(_lcd_line, format);
+}
 
-  va_list ap;
-  va_start(ap, format);
-  vsnprintf(linebuf, sizeof(linebuf), format, ap);
-  va_end(ap);
-
-  lcd_write(_lcd_line, linebuf);
+void Adafruit_TestBed_Brains::LCD_printf_error(const char format[], ...) {
+  setColor(0xFF0000);
+  _LCD_PRINTF(_lcd_line, format);
 }
 
 void Adafruit_TestBed_Brains::LCD_info(const char *msg1, const char *msg2) {
