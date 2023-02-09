@@ -394,7 +394,8 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 // ESP32 Target
 //--------------------------------------------------------------------+
 
-void Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass* bootrom, uint32_t baudrate) {
+void Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
+                                          uint32_t baudrate) {
   esp32boot = bootrom;
 
   LCD_printf("Syncing ESP32");
@@ -405,7 +406,8 @@ void Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass* bootrom, uint32_t b
 }
 
 #define MD5_TEST
-size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath, uint32_t addr) {
+size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
+                                                    uint32_t addr) {
   if (!esp32boot) {
     return 0;
   }
@@ -429,7 +431,7 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath, uint32_t 
 #ifndef MD5_TEST
   if (!esp32boot->beginFlash(addr, fsize, MAX_PAYLOAD_SIZE)) {
     LCD_printf_error("beginFlash failed!");
-  }else
+  } else
 #endif
   {
     LCD_printf("ESP32 packt %u", fsize / MAX_PAYLOAD_SIZE);
@@ -446,8 +448,7 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath, uint32_t 
       setLED(HIGH);
       Serial.printf("#");
       if (!esp32boot->dataFlash(buf, MAX_PAYLOAD_SIZE)) {
-        LCD_printf_error("Failed to flash")
-        break;
+        LCD_printf_error("Failed to flash") break;
       }
       setLED(LOW);
 #endif
@@ -471,16 +472,16 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath, uint32_t 
       LCD_printf_error("MD5 mismatched!!\r\n");
 
       Serial.printf("File: ");
-      for(size_t i=0; i<16; i++) Serial.printf("%02X ", file_md5[i]);
+      for (size_t i = 0; i < 16; i++)
+        Serial.printf("%02X ", file_md5[i]);
       Serial.println();
 
       Serial.printf("ESP : ");
-      for(size_t i=0; i<16; i++) Serial.printf("%02X ", esp_md5[i]);
+      for (size_t i = 0; i < 16; i++)
+        Serial.printf("%02X ", esp_md5[i]);
       Serial.println();
-
     }
   }
-
 
   free(buf);
   fsrc.close();
@@ -610,14 +611,15 @@ void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {
   _lcd_line = 1 - linenum;
 }
 
-#define _LCD_PRINTF(_line, _format)   do { \
-  char linebuf[17]; \
-  va_list ap; \
-  va_start(ap, _format); \
-  vsnprintf(linebuf, sizeof(linebuf), _format, ap); \
-  va_end(ap); \
-  lcd_write(_line, linebuf); \
-} while(0)
+#define _LCD_PRINTF(_line, _format)                                            \
+  do {                                                                         \
+    char linebuf[17];                                                          \
+    va_list ap;                                                                \
+    va_start(ap, _format);                                                     \
+    vsnprintf(linebuf, sizeof(linebuf), _format, ap);                          \
+    va_end(ap);                                                                \
+    lcd_write(_line, linebuf);                                                 \
+  } while (0)
 
 void Adafruit_TestBed_Brains::LCD_printf(uint8_t linenum, const char format[],
                                          ...) {

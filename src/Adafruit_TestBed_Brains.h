@@ -84,7 +84,7 @@ public:
   // ESP32 Target
   //--------------------------------------------------------------------+
 
-  void esp32_begin(ESP32BootROMClass* bootrom, uint32_t baudrate);
+  void esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
 
   // program esp32 target with file from SDCard
   // return number of programmed bytes
@@ -109,7 +109,7 @@ public:
   Adafruit_DAP *dap;
 
   // ESP32 ROM
-  ESP32BootROMClass* esp32boot;
+  ESP32BootROMClass *esp32boot;
 
 private:
   bool _inited;
