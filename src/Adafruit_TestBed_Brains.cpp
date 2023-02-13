@@ -405,7 +405,6 @@ void Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
   LCD_printf("Synced OK");
 }
 
-#define MD5_TEST
 size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
                                                     uint32_t addr) {
   if (!esp32boot) {
@@ -428,11 +427,9 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
   uint32_t fsize = fsrc.fileSize();
   uint32_t total_count = 0;
 
-#ifndef MD5_TEST
   if (!esp32boot->beginFlash(addr, fsize, MAX_PAYLOAD_SIZE)) {
     LCD_printf_error("beginFlash failed!");
   } else
-#endif
   {
     LCD_printf("ESP32 packt %u", fsize / MAX_PAYLOAD_SIZE);
 
@@ -444,14 +441,13 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
       memset(buf, 0xff, MAX_PAYLOAD_SIZE); // empty it out
       uint32_t rd_count = fsrc.read(buf, MAX_PAYLOAD_SIZE);
 
-#ifndef MD5_TEST
       setLED(HIGH);
       Serial.printf("#");
       if (!esp32boot->dataFlash(buf, MAX_PAYLOAD_SIZE)) {
-        LCD_printf_error("Failed to flash") break;
+        LCD_printf_error("Failed to flash");
+        break;
       }
       setLED(LOW);
-#endif
 
       md5.add(buf, rd_count);
       total_count += rd_count;
@@ -468,19 +464,25 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
     uint8_t esp_md5[16];
     esp32boot->md5Flash(addr, fsize, esp_md5);
 
-    if (memcmp(file_md5, esp_md5, 16)) {
-      LCD_printf_error("MD5 mismatched!!\r\n");
+    if ( 0 == memcmp(file_md5, esp_md5, 16)) {
+      LCD_printf("MD5 matched");
+    }else {
+      LCD_printf_error("MD5 mismatched!!");
 
       Serial.printf("File: ");
-      for (size_t i = 0; i < 16; i++)
+      for (size_t i = 0; i < 16; i++) {
         Serial.printf("%02X ", file_md5[i]);
+      }
       Serial.println();
 
       Serial.printf("ESP : ");
-      for (size_t i = 0; i < 16; i++)
+      for (size_t i = 0; i < 16; i++) {
         Serial.printf("%02X ", esp_md5[i]);
+      }
       Serial.println();
     }
+
+    // esp32boot->endFlash(false);
   }
 
   free(buf);

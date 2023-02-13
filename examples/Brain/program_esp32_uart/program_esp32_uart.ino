@@ -77,7 +77,7 @@ void setup() {
 
 
   // Writing bin file
-  Brain.LCD_printf("Flashing file");
+  Brain.LCD_printf("Flashing file..");
 
   uint32_t ms = millis();
   size_t wr_bytes = Brain.essp32_programFlash(BIN_FILE_PATH, 0);
