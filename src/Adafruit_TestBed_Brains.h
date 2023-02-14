@@ -84,7 +84,7 @@ public:
   // ESP32 Target
   //--------------------------------------------------------------------+
 
-  void esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
+  bool esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
 
   // program esp32 target with file from SDCard
   // return number of programmed bytes

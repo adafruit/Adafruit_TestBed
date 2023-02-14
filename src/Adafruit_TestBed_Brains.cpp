@@ -394,15 +394,20 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 // ESP32 Target
 //--------------------------------------------------------------------+
 
-void Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
+bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
                                           uint32_t baudrate) {
   esp32boot = bootrom;
 
   LCD_printf("Syncing ESP32");
-  if (!esp32boot->begin(baudrate)) {
+  bool ret = esp32boot->begin(baudrate);
+
+  if (ret) {
+    LCD_printf("Synced OK");
+  } else {
     LCD_printf_error("Sync failed!");
   }
-  LCD_printf("Synced OK");
+
+  return ret;
 }
 
 size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
@@ -429,8 +434,7 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
 
   if (!esp32boot->beginFlash(addr, fsize, MAX_PAYLOAD_SIZE)) {
     LCD_printf_error("beginFlash failed!");
-  } else
-  {
+  } else {
     LCD_printf("ESP32 packt %u", fsize / MAX_PAYLOAD_SIZE);
 
     MD5Builder md5;
@@ -464,9 +468,9 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
     uint8_t esp_md5[16];
     esp32boot->md5Flash(addr, fsize, esp_md5);
 
-    if ( 0 == memcmp(file_md5, esp_md5, 16)) {
+    if (0 == memcmp(file_md5, esp_md5, 16)) {
       LCD_printf("MD5 matched");
-    }else {
+    } else {
       LCD_printf_error("MD5 mismatched!!");
 
       Serial.printf("File: ");

@@ -73,8 +73,10 @@ void setup() {
   // prepare SD Card
   prepare_sd();
 
-  Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE);
-
+  while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
+    // retry syncing
+    delay(1000);
+  }
 
   // Writing bin file
   Brain.LCD_printf("Flashing file..");
