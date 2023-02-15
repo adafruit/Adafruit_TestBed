@@ -410,6 +410,11 @@ bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
   return ret;
 }
 
+void Adafruit_TestBed_Brains::esp32_end(void) {
+  esp32boot->endFlash(false);
+  esp32boot->end();
+}
+
 size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
                                                     uint32_t addr) {
   if (!esp32boot) {
@@ -435,7 +440,7 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
   if (!esp32boot->beginFlash(addr, fsize, MAX_PAYLOAD_SIZE)) {
     LCD_printf_error("beginFlash failed!");
   } else {
-    LCD_printf("ESP32 packt %u", fsize / MAX_PAYLOAD_SIZE);
+    LCD_printf("#Packets %u", fsize / MAX_PAYLOAD_SIZE);
 
     MD5Builder md5;
     md5.begin();
@@ -485,8 +490,6 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
       }
       Serial.println();
     }
-
-    // esp32boot->endFlash(false);
   }
 
   free(buf);
