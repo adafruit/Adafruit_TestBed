@@ -23,15 +23,44 @@
 //#define ESP32_BAUDRATE  921600
 #define ESP32_BAUDRATE  115200
 
-// Bin file path on SDCard to copy
-#define BIN_FILE_PATH   "esp32s2/feather/boot_app0.bin"
-#define BIN_ADDR   0xe000
-
 // CDC Host object
 Adafruit_USBH_CDC  SerialHost;
 
 // Defined an boot rom object that use UART Serial1
 ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET, ESP32_SUPPORTS_ENCRYPTED_FLASH);
+
+// Bin files on SDCard to program
+// These files can be found in raspi-tester (or compiled from Arduino sketch)
+#define BIN_FEATHER_ESP32S2   0
+#define BIN_FEATHER_ESP32S3   1
+
+#define BIN_FILES     BIN_FEATHER_ESP32S3 // select which bins to flash either Feather ESP32 S2 or S3
+
+struct {
+  uint32_t addr;
+  const char* fpath;
+} bin_files [] =
+{
+#if BIN_FILES == BIN_FEATHER_ESP32S2
+  { 0x1000  , "esp32s2/PID5000/esp32s2_feather_test.ino.bootloader.bin" },
+  { 0x8000  , "esp32s2/PID5000/esp32s2_feather_test.ino.partitions.bin" },
+  { 0xe000  , "esp32s2/PID5000/boot_app0.bin"                           },
+  { 0x10000 , "esp32s2/PID5000/esp32s2_feather_test.ino.bin"            },
+  { 0x2d0000, "esp32s2/PID5000/tinyuf2.bin"                             },
+#endif
+
+#if BIN_FILES == BIN_FEATHER_ESP32S3
+  { 0x0000  , "esp32s3/PID5447/esp32s3_feather_test.ino.bootloader.bin" },
+  { 0x8000  , "esp32s3/PID5447/esp32s3_feather_test.ino.partitions.bin" },
+  { 0xe000  , "esp32s3/PID5447/boot_app0.bin"                           },
+  { 0x10000 , "esp32s3/PID5447/esp32s3_feather_test.ino.bin"            },
+  { 0x2d0000, "esp32s3/PID5447/tinyuf2.bin"                             },
+#endif
+};
+
+enum {
+  BIN_FILES_COUNT = sizeof(bin_files)/sizeof(bin_files[0])
+};
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
@@ -82,13 +111,23 @@ void setup() {
     delay(1000);
   }
 
-  // Writing bin file
-  Brain.LCD_printf("Flashing file..");
-
+  // Writing bin files
+  size_t total_bytes = 0;
   uint32_t ms = millis();
-  size_t wr_bytes = Brain.essp32_programFlash(BIN_FILE_PATH, BIN_ADDR);
+  for(size_t i=0; i<BIN_FILES_COUNT; i++) {
+    Brain.LCD_printf("Flashing file %u", i);
+    size_t wr_count = Brain.essp32_programFlash(bin_files[i].fpath, bin_files[i].addr);
+    total_bytes += wr_count;
+    if (!wr_count) {
+      Brain.LCD_printf_error("Failed to flash");
+    }
+  }
+  print_speed(total_bytes, millis() - ms);
 
-  print_speed(wr_bytes, millis() - ms);
+  Brain.esp32_end();
+
+  // reset ESP32 to run new firmware
+  Brain.targetReset();
 }
 
 void loop() {
