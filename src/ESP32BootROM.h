@@ -23,7 +23,10 @@
 
 class ESP32BootROMClass {
 public:
-  ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin);
+  // supportsEncryptedFlash must be set to
+  // - false for ESP32 (default)
+  // - true for later chips such as S2, S3, H2, C3
+  ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin, bool supportsEncryptedFlash = false);
 
   int begin(unsigned long baudrate);
   void end();
@@ -48,6 +51,7 @@ private:
   HardwareSerial *_serial;
   int _gpio0Pin;
   int _resetnPin;
+  bool _supports_encrypted_flash;
 
   uint32_t _flashSequenceNumber;
   uint32_t _chunkSize;

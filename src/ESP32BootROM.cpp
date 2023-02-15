@@ -21,7 +21,13 @@
 
 #include "ESP32BootROM.h"
 
-#define DEBUG 1
+#define DEBUG 0
+
+#if DEBUG
+  #define DBG_PRINTF(...)   Serial.printf(__VA_ARGS__)
+#else
+  #define DBG_PRINTF(...)
+#endif
 
 enum {
     // Commands supported by ESP8266 ROM bootloader
@@ -108,8 +114,9 @@ enum {
 };
 
 ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
-                                     int resetnPin)
-    : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin) {}
+                                     int resetnPin, bool supportsEncryptedFlash)
+    : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin), _supports_encrypted_flash(supportsEncryptedFlash) {
+}
 
 int ESP32BootROMClass::begin(unsigned long baudrate) {
   _serial->begin(115200);
@@ -166,7 +173,7 @@ int ESP32BootROMClass::sync() {
                           0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
                           0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55};
 
-  command(0x08, data, sizeof(data));
+  command(ESP_SYNC, data, sizeof(data));
 
   int results[8];
 
@@ -180,7 +187,7 @@ int ESP32BootROMClass::sync() {
 int ESP32BootROMClass::changeBaudrate(unsigned long baudrate) {
   const uint32_t data[2] = {baudrate, 0};
 
-  command(0x0f, data, sizeof(data));
+  command(ESP_CHANGE_BAUDRATE, data, sizeof(data));
 
   return (response(0x0f, 3000) == 0);
 }
@@ -188,16 +195,18 @@ int ESP32BootROMClass::changeBaudrate(unsigned long baudrate) {
 int ESP32BootROMClass::spiAttach() {
   const uint8_t data[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-  command(0x0d, data, sizeof(data));
+  command(ESP_SPI_ATTACH, data, sizeof(data));
 
   return (response(0x0d, 3000) == 0);
 }
 
 int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
                                   uint32_t chunkSize) {
-  const uint32_t data[4] = {size, size / chunkSize, chunkSize, offset};
 
-  command(0x02, data, sizeof(data));
+  const uint32_t data[] = {size, size / chunkSize, chunkSize, offset, 0};
+  uint16_t const len = _supports_encrypted_flash ? 20 : 16;
+
+  command(ESP_FLASH_BEGIN, data, len);
 
   _flashSequenceNumber = 0;
   _chunkSize = chunkSize;
@@ -219,7 +228,7 @@ int ESP32BootROMClass::dataFlash(const void *data, uint32_t length) {
     memset(&cmdData[4 + (length / 4)], 0xff, _chunkSize - length);
   }
 
-  command(0x03, cmdData, sizeof(cmdData));
+  command(ESP_FLASH_DATA, cmdData, sizeof(cmdData));
 
   return (response(0x03, 3000) == 0);
 }
@@ -227,7 +236,7 @@ int ESP32BootROMClass::dataFlash(const void *data, uint32_t length) {
 int ESP32BootROMClass::endFlash(uint32_t reboot) {
   const uint32_t data[1] = {reboot};
 
-  command(0x04, data, sizeof(data));
+  command(ESP_FLASH_END, data, sizeof(data));
 
   return (response(0x04, 3000) == 0);
 }
@@ -236,7 +245,7 @@ int ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
                                 uint8_t *result) {
   const uint32_t data[4] = {offset, size, 0, 0};
 
-  command(0x13, data, sizeof(data));
+  command(ESP_SPI_FLASH_MD5, data, sizeof(data));
 
   uint8_t asciiResult[32];
 
@@ -259,13 +268,15 @@ int ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
 void ESP32BootROMClass::command(int opcode, const void *data, uint16_t length) {
   uint32_t checksum = 0;
 
-  if (opcode == 0x03) {
+  if (opcode == ESP_FLASH_DATA) {
     checksum = 0xef; // seed
 
     for (uint16_t i = 16; i < length; i++) {
       checksum ^= ((const uint8_t *)data)[i];
     }
   }
+
+  DBG_PRINTF("=> c0 00 %02x %02x %02x ", opcode, length & 0x00ff, length >> 8);
 
   _serial->write(0xc0);
   _serial->write((uint8_t)0x00); // direction
@@ -276,16 +287,7 @@ void ESP32BootROMClass::command(int opcode, const void *data, uint16_t length) {
   _serial->write(0xc0);
   _serial->flush();
 
-#if DEBUG
-  Serial.printf("=> C0 00 %02X %02X %02X", opcode, length & 0x00ff, length >> 8);
-
-  // checksum and data is escaped
-//  for (int i = 0; i < index; i++) {
-//    Serial.print("%02X ", data[i);
-//  }
-
-  Serial.println("0xC0");
-#endif
+  DBG_PRINTF("c0\r\n");
 }
 
 int ESP32BootROMClass::response(int opcode, unsigned long timeout, void *body) {
@@ -314,7 +316,7 @@ int ESP32BootROMClass::response(int opcode, unsigned long timeout, void *body) {
   if (index) {
     Serial.print("<= ");
     for (int i = 0; i < index; i++) {
-      Serial.printf("%02X ", data[i]);
+      Serial.printf("%02x ", data[i]);
     }
     Serial.println();
   }
@@ -347,11 +349,16 @@ void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
     if (b == 0xdb) {
       _serial->write(0xdb);
       _serial->write(0xdd);
+
+      DBG_PRINTF("db db ");
     } else if (b == 0xc0) {
       _serial->write(0xdb);
       _serial->write(0xdc);
+
+      DBG_PRINTF("db dc ");
     } else {
       _serial->write(b);
+      DBG_PRINTF("%02x ", b);
     }
   }
 }
