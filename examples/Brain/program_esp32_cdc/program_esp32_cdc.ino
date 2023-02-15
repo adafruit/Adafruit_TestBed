@@ -23,10 +23,6 @@
 //#define ESP32_BAUDRATE  921600
 #define ESP32_BAUDRATE  115200
 
-// Espressif Boot VID/PID
-#define BOOT_VID   0x303a
-#define BOOT_PID   0x0002
-
 // Bin file path on SDCard to copy
 #define BIN_FILE_PATH   "esp32s2/feather/boot_app0.bin"
 #define BIN_ADDR   0xe000
@@ -80,10 +76,6 @@ void setup() {
 
   // prepare SD Card
   prepare_sd();
-
-  // Wait for SerialHost to connect (USB host bit-banging and task is
-  // processed on core1)
-  while ( !SerialHost.connected() ) delay(10);
 
   while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
     // retry syncing
@@ -145,12 +137,6 @@ void tuh_mount_cb (uint8_t daddr)
 
   Serial.printf("Device attached, address = %d\r\n", daddr);
   Brain.LCD_printf("USBID %04x:%04x", vid, pid);
-
-  if ( !(vid == BOOT_VID && pid == BOOT_PID) ) {
-    Brain.LCD_printf("UnkDev %04x:%04x", vid, pid);
-  }else {
-    Brain.LCD_printf("ESP32-S2 BootRom");
-  }
 }
 
 /// Invoked when device is unmounted (bus reset/unplugged)

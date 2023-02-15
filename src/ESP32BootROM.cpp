@@ -129,7 +129,14 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   delay(10);
 
   digitalWrite(_resetnPin, HIGH);
-  delay(100);
+  delay(50);
+
+  // Wait for serial, needed if using with SerialHost (host cdc)
+  while (!_serial) {
+    delay(10);
+  }
+
+  delay(50); // additional delay for SerialHost connected
   digitalWrite(_gpio0Pin, HIGH);
 
   int synced = 0;
