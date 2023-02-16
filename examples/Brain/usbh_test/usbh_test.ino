@@ -59,7 +59,8 @@ void setup1() {
 
   // Since we only support 1 CDC interface with Tester (also CFG_TUH_CDC = 1)
   // the index will always be 0 for SerialHost
-  SerialHost.begin(0);
+  // SerialHost.setInterfaceIndex(0);
+  SerialHost.begin(115200);
 
   Brain.LCD_printf(0, "No USB attached");
   Brain.LCD_printf(1, "Plug your device");

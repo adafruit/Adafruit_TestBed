@@ -10,6 +10,9 @@
 #include "Adafruit_DAP.h"
 #include "Adafruit_TinyUSB.h"
 
+#include "ESP32BootROM.h"
+#include "MD5Builder.h"
+
 /**************************************************************************/
 /*!
     @brief A helper class for making RP2040 "Tester Brains"
@@ -21,11 +24,16 @@ public:
   void begin(void);
   bool inited(void);
 
-  // LCD
-  // printf on specified line
+  //------------- LCD -------------//
+
+  // printf on specific line
   void LCD_printf(uint8_t linenum, const char format[], ...);
+
   // printf on next line
   void LCD_printf(const char format[], ...);
+
+  // printf on error (RGB = RED)
+  void LCD_printf_error(const char format[], ...);
 
   void LCD_error(const char *errmsg1, const char *errmsg2);
   void LCD_info(const char *msg1, const char *msg2);
@@ -46,7 +54,9 @@ public:
   // Target
   void targetReset(uint32_t reset_ms = 20);
 
-  //------------- RP2040 target -------------//
+  //--------------------------------------------------------------------+
+  // RP2040 Target
+  //--------------------------------------------------------------------+
   // reset rp2040 target to Boot ROM
   void rp2040_targetResetBootRom(int bootsel_pin = 28, uint32_t reset_ms = 20);
 
@@ -54,7 +64,9 @@ public:
   // return number of copied bytes (typically uf2 file size)
   size_t rp2040_programUF2(const char *fpath);
 
-  //------------- SAMD21 target -------------//
+  //--------------------------------------------------------------------+
+  // DAP (samd21/51, nrf5x, stm32f4 etc..) Target
+  //--------------------------------------------------------------------+
   bool dap_begin(Adafruit_DAP *dp);
   bool dap_connect(void);
   void dap_disconnect(void);
@@ -68,7 +80,21 @@ public:
   // return number of programmed bytes
   size_t dap_programFlash(const char *fpath, uint32_t addr);
 
-  //------------- Public Variables -------------//
+  //--------------------------------------------------------------------+
+  // ESP32 Target
+  //--------------------------------------------------------------------+
+
+  bool esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
+  void esp32_end(void);
+
+  // program esp32 target with file from SDCard
+  // return number of programmed bytes
+  size_t essp32_programFlash(const char *fpath, uint32_t addr);
+
+  //--------------------------------------------------------------------+
+  // Public Variables
+  //--------------------------------------------------------------------+
+
   LiquidCrystal lcd = LiquidCrystal(7, 8, 9, 10, 11, 12);
   SdFat SD;
   SdSpiConfig SD_CONFIG = SdSpiConfig(17, SHARED_SPI, SD_SCK_MHZ(16));
@@ -80,7 +106,11 @@ public:
   FatVolume USBH_FS;
   Adafruit_USBH_MSC_BlockDevice USBH_BlockDev;
 
+  // Dap
   Adafruit_DAP *dap;
+
+  // ESP32 ROM
+  ESP32BootROMClass *esp32boot;
 
 private:
   bool _inited;
