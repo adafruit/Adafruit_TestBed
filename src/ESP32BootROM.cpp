@@ -85,7 +85,7 @@ enum {
   ESP_CHECKSUM_MAGIC = 0xEF,
 
   // Flash sector size, minimum unit of erase.
-  FLASH_SECTOR_SIZE = 0x1000,
+  // FLASH_SECTOR_SIZE = 0x1000,
 
   UART_DATE_REG_ADDR = 0x60000078,
 
