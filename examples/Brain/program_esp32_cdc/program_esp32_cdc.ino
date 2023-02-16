@@ -50,11 +50,11 @@ struct {
 #endif
 
 #if BIN_FILES == BIN_FEATHER_ESP32S3
-  { 0x0000  , "esp32s3/PID5447/esp32s3_feather_test.ino.bootloader.bin" },
-  { 0x8000  , "esp32s3/PID5447/esp32s3_feather_test.ino.partitions.bin" },
-  { 0xe000  , "esp32s3/PID5447/boot_app0.bin"                           },
-  { 0x10000 , "esp32s3/PID5447/esp32s3_feather_test.ino.bin"            },
-  { 0x2d0000, "esp32s3/PID5447/tinyuf2.bin"                             },
+  { 0x0000  , "esp32s3/PID5477/esp32s3_feather_test.ino.bootloader.bin" },
+  { 0x8000  , "esp32s3/PID5477/esp32s3_feather_test.ino.partitions.bin" },
+  { 0xe000  , "esp32s3/PID5477/boot_app0.bin"                           },
+  { 0x10000 , "esp32s3/PID5477/esp32s3_feather_test.ino.bin"            },
+  { 0x2d0000, "esp32s3/PID5477/tinyuf2.bin"                             },
 #endif
 };
 
@@ -107,8 +107,6 @@ void setup() {
   prepare_sd();
 
   while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
-    // retry syncing
-    delay(1000);
   }
 
   // Writing bin files

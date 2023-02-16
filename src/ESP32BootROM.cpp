@@ -24,99 +24,101 @@
 #define DEBUG 0
 
 #if DEBUG
-  #define DBG_PRINTF(...)   Serial.printf(__VA_ARGS__)
+#define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
 #else
-  #define DBG_PRINTF(...)
+#define DBG_PRINTF(...)
 #endif
 
 enum {
-    // Commands supported by ESP8266 ROM bootloader
-    ESP_FLASH_BEGIN = 0x02,
-    ESP_FLASH_DATA = 0x03,
-    ESP_FLASH_END = 0x04,
-    ESP_MEM_BEGIN = 0x05,
-    ESP_MEM_END = 0x06,
-    ESP_MEM_DATA = 0x07,
-    ESP_SYNC = 0x08,
-    ESP_WRITE_REG = 0x09,
-    ESP_READ_REG = 0x0A,
+  // Commands supported by ESP8266 ROM bootloader
+  ESP_FLASH_BEGIN = 0x02,
+  ESP_FLASH_DATA = 0x03,
+  ESP_FLASH_END = 0x04,
+  ESP_MEM_BEGIN = 0x05,
+  ESP_MEM_END = 0x06,
+  ESP_MEM_DATA = 0x07,
+  ESP_SYNC = 0x08,
+  ESP_WRITE_REG = 0x09,
+  ESP_READ_REG = 0x0A,
 
-    // Some comands supported by ESP32 and later chips ROM bootloader (or -8266 w/ stub)
-    ESP_SPI_SET_PARAMS = 0x0B,
-    ESP_SPI_ATTACH = 0x0D,
-    ESP_READ_FLASH_SLOW = 0x0E,  // ROM only, much slower than the stub flash read
-    ESP_CHANGE_BAUDRATE = 0x0F,
-    ESP_FLASH_DEFL_BEGIN = 0x10,
-    ESP_FLASH_DEFL_DATA = 0x11,
-    ESP_FLASH_DEFL_END = 0x12,
-    ESP_SPI_FLASH_MD5 = 0x13,
+  // Some comands supported by ESP32 and later chips ROM bootloader (or -8266 w/
+  // stub)
+  ESP_SPI_SET_PARAMS = 0x0B,
+  ESP_SPI_ATTACH = 0x0D,
+  ESP_READ_FLASH_SLOW = 0x0E, // ROM only, much slower than the stub flash read
+  ESP_CHANGE_BAUDRATE = 0x0F,
+  ESP_FLASH_DEFL_BEGIN = 0x10,
+  ESP_FLASH_DEFL_DATA = 0x11,
+  ESP_FLASH_DEFL_END = 0x12,
+  ESP_SPI_FLASH_MD5 = 0x13,
 
-    // Commands supported by ESP32-S2 and later chips ROM bootloader only
-    ESP_GET_SECURITY_INFO = 0x14,
+  // Commands supported by ESP32-S2 and later chips ROM bootloader only
+  ESP_GET_SECURITY_INFO = 0x14,
 
-    // Some commands supported by stub only
-    ESP_ERASE_FLASH = 0xD0,
-    ESP_ERASE_REGION = 0xD1,
-    ESP_READ_FLASH = 0xD2,
-    ESP_RUN_USER_CODE = 0xD3,
+  // Some commands supported by stub only
+  ESP_ERASE_FLASH = 0xD0,
+  ESP_ERASE_REGION = 0xD1,
+  ESP_READ_FLASH = 0xD2,
+  ESP_RUN_USER_CODE = 0xD3,
 
-    // Flash encryption encrypted data command
-    ESP_FLASH_ENCRYPT_DATA = 0xD4,
+  // Flash encryption encrypted data command
+  ESP_FLASH_ENCRYPT_DATA = 0xD4,
 
-    // Response code(s) sent by ROM
-    ROM_INVALID_RECV_MSG = 0x05,  // response if an invalid message is received
+  // Response code(s) sent by ROM
+  ROM_INVALID_RECV_MSG = 0x05, // response if an invalid message is received
 };
 
 enum {
-    // Maximum block sized for RAM and Flash writes, respectively.
-    ESP_RAM_BLOCK = 0x1800,
+  // Maximum block sized for RAM and Flash writes, respectively.
+  ESP_RAM_BLOCK = 0x1800,
 
-    FLASH_WRITE_SIZE = 0x400,
+  FLASH_WRITE_SIZE = 0x400,
 
-    // Default baudrate. The ROM auto-bauds, so we can use more or less whatever we want.
-    ESP_ROM_BAUD = 115200,
+  // Default baudrate. The ROM auto-bauds, so we can use more or less whatever
+  // we want.
+  ESP_ROM_BAUD = 115200,
 
-    // First byte of the application image
-    ESP_IMAGE_MAGIC = 0xE9,
+  // First byte of the application image
+  ESP_IMAGE_MAGIC = 0xE9,
 
-    // Initial state for the checksum routine
-    ESP_CHECKSUM_MAGIC = 0xEF,
+  // Initial state for the checksum routine
+  ESP_CHECKSUM_MAGIC = 0xEF,
 
-    // Flash sector size, minimum unit of erase.
-    FLASH_SECTOR_SIZE = 0x1000,
+  // Flash sector size, minimum unit of erase.
+  FLASH_SECTOR_SIZE = 0x1000,
 
-    UART_DATE_REG_ADDR = 0x60000078,
+  UART_DATE_REG_ADDR = 0x60000078,
 
-    // This ROM address has a different value on each chip model
-    CHIP_DETECT_MAGIC_REG_ADDR = 0x40001000,
+  // This ROM address has a different value on each chip model
+  CHIP_DETECT_MAGIC_REG_ADDR = 0x40001000,
 
-    UART_CLKDIV_MASK = 0xFFFFF,
+  UART_CLKDIV_MASK = 0xFFFFF,
 
-    // Memory addresses
-    IROM_MAP_START = 0x40200000,
-    IROM_MAP_END = 0x40300000,
+  // Memory addresses
+  IROM_MAP_START = 0x40200000,
+  IROM_MAP_END = 0x40300000,
 
-    // The number of bytes in the UART response that signify command status
-    // STATUS_BYTES_LENGTH = 2,
+  // The number of bytes in the UART response that signify command status
+  // STATUS_BYTES_LENGTH = 2,
 
-    // Bootloader flashing offset
-    // BOOTLOADER_FLASH_OFFSET = 0x0,
+  // Bootloader flashing offset
+  // BOOTLOADER_FLASH_OFFSET = 0x0,
 
-    // ROM supports an encrypted flashing mode
-    // SUPPORTS_ENCRYPTED_FLASH = False,
+  // ROM supports an encrypted flashing mode
+  // SUPPORTS_ENCRYPTED_FLASH = False,
 
-    // Response to ESP_SYNC might indicate that flasher stub is running
-    // instead of the ROM bootloader
-    // sync_stub_detected = False,
+  // Response to ESP_SYNC might indicate that flasher stub is running
+  // instead of the ROM bootloader
+  // sync_stub_detected = False,
 
-    // Device PIDs
-    USB_JTAG_SERIAL_PID = 0x1001
+  // Device PIDs
+  USB_JTAG_SERIAL_PID = 0x1001
 };
 
 ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
                                      int resetnPin, bool supportsEncryptedFlash)
-    : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin), _supports_encrypted_flash(supportsEncryptedFlash) {
-}
+    : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin),
+      _supports_encrypted_flash(supportsEncryptedFlash) {}
 
 int ESP32BootROMClass::begin(unsigned long baudrate) {
   _serial->begin(115200);

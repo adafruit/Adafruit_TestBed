@@ -26,7 +26,8 @@ public:
   // supportsEncryptedFlash must be set to
   // - false for ESP32 (default)
   // - true for later chips such as S2, S3, H2, C3
-  ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin, bool supportsEncryptedFlash = false);
+  ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin,
+                    bool supportsEncryptedFlash = false);
 
   int begin(unsigned long baudrate);
   void end();
