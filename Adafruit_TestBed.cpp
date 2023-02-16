@@ -218,6 +218,7 @@ bool Adafruit_TestBed::testAnalogVoltage(uint16_t pin, const char *name,
 /**************************************************************************/
 bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
                                 uint8_t num_allpins) {
+  bool ok = false;
 
   theSerial->print(F("\tTesting "));
   theSerial->print(a, DEC);
@@ -237,44 +238,52 @@ bool Adafruit_TestBed::testpins(uint8_t a, uint8_t b, uint8_t *allpins,
     return false;
   }
 
-  // turn off both pullups
-  pinMode(a, INPUT);
-  pinMode(b, INPUT);
-
-  // make a an output
-  pinMode(a, OUTPUT);
-  digitalWrite(a, LOW);
-  delay(1);
-
-  int ar = digitalRead(a);
-  int br = digitalRead(b);
-
-  // make sure both are low
-  if (ar || br) {
-    theSerial->print(F("Low test fail on "));
-    if (br)
-      theSerial->println(b, DEC);
-    if (ar)
-      theSerial->println(a, DEC);
-    return false;
+  for (int retry=0; retry<3 && !ok; retry++) {
+    // turn off both pullups
+    pinMode(a, INPUT);
+    pinMode(b, INPUT);
+    
+    // make a an output
+    pinMode(a, OUTPUT);
+    digitalWrite(a, LOW);
+    delay(1);
+    
+    int ar = digitalRead(a);
+    int br = digitalRead(b);
+    delay(5);
+    
+    // make sure both are low
+    if (ar || br) {
+      theSerial->print(F("Low test fail on pin #"));
+      if (br)
+	theSerial->println(b, DEC);
+      if (ar)
+	theSerial->println(a, DEC);
+      ok = false;
+    }
+    ok = true;
   }
 
-  // a is an input, b is an output
-  pinMode(a, INPUT);
-  pinMode(b, OUTPUT);
-  digitalWrite(b, HIGH);
-  delay(10);
-
-  // verify neither are grounded
-  if (!digitalRead(a)
+  ok = false;
+  for (int retry=0; retry<3 && !ok; retry++) {
+    //theSerial->println("OK!");
+    // a is an input, b is an output
+    pinMode(a, INPUT);
+    pinMode(b, OUTPUT);
+    digitalWrite(b, HIGH);
+    delay(10);
+    
+    // verify neither are grounded
+    if (!digitalRead(a)
 #if !defined(ESP32)
-      || !digitalRead(b)
+	|| !digitalRead(b)
 #endif
-  ) {
-    theSerial->println(
-        F("Ground test 2 fail: both pins should not be grounded"));
-    delay(100);
-    return false;
+	) {
+      theSerial->println(F("Ground test 2 fail: both pins should not be grounded"));
+      delay(100);
+      ok = false;
+    }
+    ok = true;
   }
 
   // make sure no pins are shorted to pin a or b

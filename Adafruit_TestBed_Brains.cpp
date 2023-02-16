@@ -157,12 +157,12 @@ void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin,
   pinMode(bootsel_pin, OUTPUT);
 
   digitalWrite(bootsel_pin, LOW);
+  delay(reset_ms);
 
   targetReset(reset_ms);
   delay(reset_ms);
 
   // change bootsel to input since it is muxed with Flash ChipSelect
-  digitalWrite(bootsel_pin, HIGH);
   pinMode(bootsel_pin, INPUT);
 }
 
