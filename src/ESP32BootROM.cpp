@@ -133,7 +133,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   delay(100);
 
   digitalWrite(_resetnPin, HIGH);
-  delay(50);
+  //delay(50);
 
   // Wait for serial, needed if using with SerialHost (host cdc)
   while (!_serial) {
@@ -234,7 +234,7 @@ int ESP32BootROMClass::spiAttach() {
 int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
                                   uint32_t chunkSize) {
 
-  const uint8_t data[] = {size, size / chunkSize, chunkSize, offset, 0};
+  const uint32_t data[] = {size, size / chunkSize, chunkSize, offset, 0};
   uint16_t const len = _supports_encrypted_flash ? 20 : 16;
 
   command(ESP_FLASH_BEGIN, data, len);
