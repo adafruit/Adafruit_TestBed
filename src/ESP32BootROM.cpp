@@ -21,7 +21,7 @@
 
 #include "ESP32BootROM.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG
 #define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
@@ -111,6 +111,8 @@ enum {
   // instead of the ROM bootloader
   // sync_stub_detected = False,
 
+  EFUSE_RD_REG_BASE = 0x3FF5A000,
+
   // Device PIDs
   USB_JTAG_SERIAL_PID = 0x1001
 };
@@ -128,7 +130,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
 
   digitalWrite(_gpio0Pin, LOW);
   digitalWrite(_resetnPin, LOW);
-  delay(10);
+  delay(100);
 
   digitalWrite(_resetnPin, HIGH);
   delay(50);
@@ -152,6 +154,26 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   }
 
   Serial.println("Synced!");
+  
+  uint32_t regvalue;
+  if (!read_reg(CHIP_DETECT_MAGIC_REG_ADDR, &regvalue)) {
+    return 0;
+  }
+  switch (regvalue)
+    {
+    case 0x00F01D83:
+      Serial.println("Found ESP32");
+      break;
+    default:
+      Serial.println("Found unknown ESP");
+    }
+
+  uint32_t macaddr_hi, macaddr_lo;
+  read_MAC(&macaddr_hi, &macaddr_lo);
+  Serial.printf("MAC addr: %02X:%02X:%02X:%02X:%02X:%02X\n\r",
+                (macaddr_hi >> 8) & 0xFF, macaddr_hi & 0xFF, 
+                (macaddr_lo >> 24) & 0xFF, (macaddr_lo >> 16) & 0xFF, 
+                (macaddr_lo >> 8) & 0xFF, macaddr_lo & 0xFF);
 
   if (baudrate != 115200) {
     if (!changeBaudrate(baudrate)) {
@@ -212,7 +234,7 @@ int ESP32BootROMClass::spiAttach() {
 int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
                                   uint32_t chunkSize) {
 
-  const uint32_t data[] = {size, size / chunkSize, chunkSize, offset, 0};
+  const uint8_t data[] = {size, size / chunkSize, chunkSize, offset, 0};
   uint16_t const len = _supports_encrypted_flash ? 20 : 16;
 
   command(ESP_FLASH_BEGIN, data, len);
@@ -274,7 +296,43 @@ int ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
   return 1;
 }
 
-void ESP32BootROMClass::command(int opcode, const void *data, uint16_t length) {
+bool ESP32BootROMClass::read_reg(uint32_t addr, uint32_t *val, uint32_t timeout_ms) {
+  const uint8_t data[4] = {(uint8_t)addr, (uint8_t)(addr >> 8), (uint8_t)(addr >> 16),  (uint8_t)(addr >> 24)};
+  command(ESP_READ_REG, data, sizeof(data));
+
+  uint8_t reply[4];
+  response(ESP_READ_REG, timeout_ms, &reply, sizeof(reply));
+  *val = reply[3];
+  *val <<= 8;
+  *val |= reply[2];
+  *val <<= 8;
+  *val |= reply[1];
+  *val <<= 8;
+  *val |= reply[0];
+
+  Serial.printf("Read register 0x%08x : 0x%08x\n\r", addr, *val);
+  return true;
+}
+
+bool ESP32BootROMClass::read_MAC(uint32_t *machi, uint32_t *maclo) {
+  if (!read_reg(EFUSE_RD_REG_BASE + 4, maclo)) {
+    return false;
+  }
+  if (!read_reg(EFUSE_RD_REG_BASE + 8, machi)) {
+    return false;
+  }
+  *machi &= 0xFFFF;
+  return true;
+}
+
+
+
+
+
+
+/***************/
+
+void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t length) {
   uint32_t checksum = 0;
 
   if (opcode == ESP_FLASH_DATA) {
@@ -299,14 +357,14 @@ void ESP32BootROMClass::command(int opcode, const void *data, uint16_t length) {
   DBG_PRINTF("c0\r\n");
 }
 
-int ESP32BootROMClass::response(int opcode, unsigned long timeout, void *body) {
+int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body, uint16_t maxlen) {
   uint8_t data[10 + 256];
   uint16_t index = 0;
 
   uint8_t responseLength = 4;
 
   unsigned long start = millis();
-  while ((millis() - start) < timeout) {
+  while ((millis() - start) < timeout_ms) {
     if (_serial->available()) {
       data[index] = _serial->read();
 
@@ -342,7 +400,11 @@ int ESP32BootROMClass::response(int opcode, unsigned long timeout, void *body) {
   }
 
   if (body) {
-    memcpy(body, &data[9], responseLength - 4);
+    if (opcode == ESP_READ_REG) {
+      memcpy(body, &data[5], maxlen);
+    } else {
+      memcpy(body, &data[9], responseLength - 4);
+    }
   }
 
   return data[responseLength + 5];

@@ -21,6 +21,8 @@
 
 #include <Arduino.h>
 
+#define ESP32_DEFAULT_TIMEOUT 3000
+
 class ESP32BootROMClass {
 public:
   // supportsEncryptedFlash must be set to
@@ -35,16 +37,18 @@ public:
   int beginFlash(uint32_t offset, uint32_t size, uint32_t chunkSize);
   int dataFlash(const void *data, uint32_t length);
   int endFlash(uint32_t reboot);
-
+  bool read_reg(uint32_t regAddr, uint32_t *regValue, uint32_t timeout_ms=ESP32_DEFAULT_TIMEOUT);
   int md5Flash(uint32_t offset, uint32_t size, uint8_t *result);
+
+  bool read_MAC(uint32_t *machi, uint32_t *maclo);
 
 private:
   int sync();
   int changeBaudrate(unsigned long baudrate);
   int spiAttach();
 
-  void command(int opcode, const void *data, uint16_t length);
-  int response(int opcode, unsigned long timeout, void *body = NULL);
+  void command(uint8_t opcode, const void *data, uint16_t length);
+  int response(uint8_t opcode, uint32_t timeout_ms, void *body = NULL, uint16_t maxlen = 4);
 
   void writeEscapedBytes(const uint8_t *data, uint16_t length);
 
