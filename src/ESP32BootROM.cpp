@@ -301,21 +301,14 @@ int ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
 }
 
 bool ESP32BootROMClass::read_reg(uint32_t addr, uint32_t *val, uint32_t timeout_ms) {
-  const uint8_t data[4] = {(uint8_t)addr, (uint8_t)(addr >> 8), (uint8_t)(addr >> 16),  (uint8_t)(addr >> 24)};
-  command(ESP_READ_REG, data, sizeof(data));
+  command(ESP_READ_REG, &addr, 4);
 
-  uint8_t reply[4];
-  response(ESP_READ_REG, timeout_ms, &reply, sizeof(reply));
-  *val = reply[3];
-  *val <<= 8;
-  *val |= reply[2];
-  *val <<= 8;
-  *val |= reply[1];
-  *val <<= 8;
-  *val |= reply[0];
-
-  Serial.printf("Read register 0x%08x : 0x%08x\n\r", addr, *val);
-  return true;
+  if( 0 == response(ESP_READ_REG, timeout_ms, val, 4) ) {
+    Serial.printf("Read register 0x%08x : 0x%08x\n\r", addr, *val);
+    return true;
+  }else {
+    return false;
+  }
 }
 
 bool ESP32BootROMClass::read_MAC(uint8_t mac[6]) {
@@ -372,6 +365,7 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t lengt
   DBG_PRINTF("c0\r\n");
 }
 
+// return response status if success, -1 if failed
 int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body, uint16_t maxlen) {
   uint8_t data[10 + 256];
   uint16_t index = 0;
