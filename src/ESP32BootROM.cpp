@@ -31,7 +31,7 @@
 #endif
 
 #define VERIFY(_cond) do { \
-  if ( !(_cond) ) { Serial.printf("Failed at line %u", __LINE__); while(1); return false;  } \
+  if ( !(_cond) ) { Serial.printf("Failed at line %u", __LINE__); Serial.flush(); while(1) { delay(10); } return false;  } \
 } while(0)
 
 enum {
@@ -557,6 +557,7 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   if (data[0] != 0xc0 || data[1] != 0x01 || data[2] != opcode ||
       data[responseLength + 5] != 0x00 || data[responseLength + 6] != 0x00 ||
       data[responseLength + 9] != 0xc0) {
+    Serial.printf("Line %d: responseLength = %u\r\n", __LINE__, responseLength);
     return -1;
   }
 
