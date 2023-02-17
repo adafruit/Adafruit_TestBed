@@ -117,6 +117,12 @@ enum {
   USB_JTAG_SERIAL_PID = 0x1001
 };
 
+enum {
+  CHIP_DETECT_MAGIC_ESP32 = 0x00F01D83,
+  CHIP_DETECT_MAGIC_ESP32S2 = 0x000007C6,
+  CHIP_DETECT_MAGIC_ESP32S3 = 0x9,
+};
+
 ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
                                      int resetnPin, bool supportsEncryptedFlash)
     : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin),
@@ -168,12 +174,10 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
       Serial.println("Found unknown ESP");
     }
 
-  uint32_t macaddr_hi, macaddr_lo;
-  read_MAC(&macaddr_hi, &macaddr_lo);
+  uint8_t mac[6];
+  read_MAC(mac);
   Serial.printf("MAC addr: %02X:%02X:%02X:%02X:%02X:%02X\n\r",
-                (macaddr_hi >> 8) & 0xFF, macaddr_hi & 0xFF, 
-                (macaddr_lo >> 24) & 0xFF, (macaddr_lo >> 16) & 0xFF, 
-                (macaddr_lo >> 8) & 0xFF, macaddr_lo & 0xFF);
+                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   if (baudrate != 115200) {
     if (!changeBaudrate(baudrate)) {
@@ -314,14 +318,25 @@ bool ESP32BootROMClass::read_reg(uint32_t addr, uint32_t *val, uint32_t timeout_
   return true;
 }
 
-bool ESP32BootROMClass::read_MAC(uint32_t *machi, uint32_t *maclo) {
-  if (!read_reg(EFUSE_RD_REG_BASE + 4, maclo)) {
+bool ESP32BootROMClass::read_MAC(uint8_t mac[6]) {
+  union {
+      uint8_t bytes[8];
+      uint32_t words[2];
+  } tmp_mac;
+
+  if (!read_reg(EFUSE_RD_REG_BASE + 4, &tmp_mac.words[1])) {
     return false;
   }
-  if (!read_reg(EFUSE_RD_REG_BASE + 8, machi)) {
+  if (!read_reg(EFUSE_RD_REG_BASE + 8, &tmp_mac.words[0])) {
     return false;
   }
-  *machi &= 0xFFFF;
+
+  // swap endian
+  tmp_mac.words[0] = __builtin_bswap32(tmp_mac.words[0]);
+  tmp_mac.words[1] = __builtin_bswap32(tmp_mac.words[1]);
+
+  // [0] is highest byte
+  memcpy(mac, tmp_mac.bytes+2, 6);
   return true;
 }
 
@@ -414,6 +429,11 @@ void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
                                           uint16_t length) {
   uint16_t written = 0;
 
+#if DEBUG
+  // skip flashing data since it is a lot to print
+  bool const print_payload = (length > 1024) ? false : true;
+#endif
+
   while (written < length) {
     uint8_t b = data[written++];
 
@@ -421,15 +441,22 @@ void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
       _serial->write(0xdb);
       _serial->write(0xdd);
 
-      DBG_PRINTF("db db ");
+      #if DEBUG
+      if (print_payload) DBG_PRINTF("db db ");
+      #endif
     } else if (b == 0xc0) {
       _serial->write(0xdb);
       _serial->write(0xdc);
 
-      DBG_PRINTF("db dc ");
+      #if DEBUG
+      if (print_payload) DBG_PRINTF("db dc ");
+      #endif
     } else {
       _serial->write(b);
-      DBG_PRINTF("%02x ", b);
+
+      #if DEBUG
+      if (print_payload) DBG_PRINTF("%02x ", b);
+      #endif
     }
   }
 }

@@ -40,7 +40,7 @@ public:
   bool read_reg(uint32_t regAddr, uint32_t *regValue, uint32_t timeout_ms=ESP32_DEFAULT_TIMEOUT);
   int md5Flash(uint32_t offset, uint32_t size, uint8_t *result);
 
-  bool read_MAC(uint32_t *machi, uint32_t *maclo);
+  bool read_MAC(uint8_t mac[6]);
 
 private:
   int sync();
