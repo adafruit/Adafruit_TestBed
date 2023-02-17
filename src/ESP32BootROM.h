@@ -34,13 +34,13 @@ public:
   int begin(unsigned long baudrate);
   void end();
 
+  bool read_reg(uint32_t regAddr, uint32_t *regValue, uint32_t timeout_ms=ESP32_DEFAULT_TIMEOUT);
+  bool read_MAC(uint8_t mac[6]);
+
   int beginFlash(uint32_t offset, uint32_t size, uint32_t chunkSize);
   int dataFlash(const void *data, uint32_t length);
   int endFlash(uint32_t reboot);
-  bool read_reg(uint32_t regAddr, uint32_t *regValue, uint32_t timeout_ms=ESP32_DEFAULT_TIMEOUT);
   int md5Flash(uint32_t offset, uint32_t size, uint8_t *result);
-
-  bool read_MAC(uint8_t mac[6]);
 
 private:
   int sync();
@@ -51,6 +51,14 @@ private:
   int response(uint8_t opcode, uint32_t timeout_ms, void *body = NULL, uint16_t maxlen = 4);
 
   void writeEscapedBytes(const uint8_t *data, uint16_t length);
+
+  bool beginMem(uint32_t offset, uint32_t size, uint32_t chunkSize);
+  bool dataMem(const void *data, uint32_t length);
+  bool endMem(uint32_t entry);
+
+  // only needed for ESP32
+  bool uploadStub(void);
+  bool syncStub(void);
 
 private:
   HardwareSerial *_serial;

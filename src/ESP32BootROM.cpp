@@ -20,6 +20,7 @@
 */
 
 #include "ESP32BootROM.h"
+#include "stub_esp32.h"
 
 #define DEBUG 1
 
@@ -28,6 +29,10 @@
 #else
 #define DBG_PRINTF(...)
 #endif
+
+#define VERIFY(_cond) do { \
+  if ( !(_cond) ) { Serial.printf("Failed at line %u", __LINE__); while(1); return false;  } \
+} while(0)
 
 enum {
   // Commands supported by ESP8266 ROM bootloader
@@ -123,6 +128,11 @@ enum {
   CHIP_DETECT_MAGIC_ESP32S3 = 0x9,
 };
 
+static inline uint32_t div_ceil(uint32_t v, uint32_t d)
+{
+  return (v + d - 1) / d;
+}
+
 ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
                                      int resetnPin, bool supportsEncryptedFlash)
     : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin),
@@ -139,7 +149,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   delay(100);
 
   digitalWrite(_resetnPin, HIGH);
-  //delay(50);
+  // delay(50);
 
   // Wait for serial, needed if using with SerialHost (host cdc)
   while (!_serial) {
@@ -161,23 +171,44 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
 
   Serial.println("Synced!");
   
+  bool use_stub = false;
+
+  //------------- Chip Detect -------------//
   uint32_t regvalue;
   if (!read_reg(CHIP_DETECT_MAGIC_REG_ADDR, &regvalue)) {
     return 0;
   }
+
   switch (regvalue)
     {
-    case 0x00F01D83:
+    case CHIP_DETECT_MAGIC_ESP32:
+      // newer module such as esp32 pico need stub to upload
+      use_stub = true;
       Serial.println("Found ESP32");
       break;
+    case CHIP_DETECT_MAGIC_ESP32S2:
+      Serial.println("Found ESP32-S2");
+      break;
+
+    case CHIP_DETECT_MAGIC_ESP32S3:
+      Serial.println("Found ESP32-S3");
+      break;
+
     default:
       Serial.println("Found unknown ESP");
+      break;
     }
 
+#if 0
   uint8_t mac[6];
   read_MAC(mac);
   Serial.printf("MAC addr: %02X:%02X:%02X:%02X:%02X:%02X\n\r",
                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+#endif
+
+  if (use_stub) {
+    VERIFY(uploadStub());
+  }
 
   if (baudrate != 115200) {
     if (!changeBaudrate(baudrate)) {
@@ -190,9 +221,12 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
     _serial->begin(baudrate);
   }
 
-  while (!spiAttach()) {
-    Serial.println("Failed to attach SPI");
-    delay(100);
+  // usse default spi connection if no stub
+  if (!use_stub) {
+    while (!spiAttach()) {
+      Serial.println("Failed to attach SPI");
+      delay(100);
+    }
   }
 
   return 1;
@@ -213,7 +247,7 @@ int ESP32BootROMClass::sync() {
   int results[8];
 
   for (int i = 0; i < 8; i++) {
-    results[i] = response(0x08, 100);
+    results[i] = response(ESP_SYNC, 100);
   }
 
   return (results[0] == 0);
@@ -223,8 +257,7 @@ int ESP32BootROMClass::changeBaudrate(unsigned long baudrate) {
   const uint32_t data[2] = {baudrate, 0};
 
   command(ESP_CHANGE_BAUDRATE, data, sizeof(data));
-
-  return (response(0x0f, 3000) == 0);
+  return (response(ESP_CHANGE_BAUDRATE, 3000) == 0);
 }
 
 int ESP32BootROMClass::spiAttach() {
@@ -232,13 +265,13 @@ int ESP32BootROMClass::spiAttach() {
 
   command(ESP_SPI_ATTACH, data, sizeof(data));
 
-  return (response(0x0d, 3000) == 0);
+  return (response(ESP_SPI_ATTACH, 3000) == 0);
 }
 
 int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
                                   uint32_t chunkSize) {
 
-  const uint32_t data[] = {size, size / chunkSize, chunkSize, offset, 0};
+  const uint32_t data[] = {size, div_ceil(size, chunkSize), chunkSize, offset};
   uint16_t const len = _supports_encrypted_flash ? 20 : 16;
 
   command(ESP_FLASH_BEGIN, data, len);
@@ -246,7 +279,7 @@ int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
   _flashSequenceNumber = 0;
   _chunkSize = chunkSize;
 
-  return (response(0x02, 120000) == 0);
+  return (response(ESP_FLASH_BEGIN, 120000) == 0);
 }
 
 int ESP32BootROMClass::dataFlash(const void *data, uint32_t length) {
@@ -265,7 +298,7 @@ int ESP32BootROMClass::dataFlash(const void *data, uint32_t length) {
 
   command(ESP_FLASH_DATA, cmdData, sizeof(cmdData));
 
-  return (response(0x03, 3000) == 0);
+  return (response(ESP_FLASH_DATA, 3000) == 0);
 }
 
 int ESP32BootROMClass::endFlash(uint32_t reboot) {
@@ -273,7 +306,7 @@ int ESP32BootROMClass::endFlash(uint32_t reboot) {
 
   command(ESP_FLASH_END, data, sizeof(data));
 
-  return (response(0x04, 3000) == 0);
+  return (response(ESP_FLASH_END, 3000) == 0);
 }
 
 int ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
@@ -284,7 +317,7 @@ int ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
 
   uint8_t asciiResult[32];
 
-  if (response(0x13, 3000, asciiResult) != 0) {
+  if (response(ESP_SPI_FLASH_MD5, 3000, asciiResult) != 0) {
     return 0;
   }
 
@@ -333,18 +366,137 @@ bool ESP32BootROMClass::read_MAC(uint8_t mac[6]) {
   return true;
 }
 
+bool ESP32BootROMClass::beginMem(uint32_t offset, uint32_t size,
+                                    uint32_t chunkSize) {
+  const uint32_t data[] = {size, div_ceil(size, chunkSize), chunkSize, offset};
+  uint16_t const len = 16;
+  command(ESP_MEM_BEGIN, data, len);
+
+  _flashSequenceNumber = 0;
+  _chunkSize = chunkSize;
+
+  return (response(ESP_MEM_BEGIN, 120000) == 0);
+}
+
+bool ESP32BootROMClass::dataMem(const void *data, uint32_t length) {
+  uint32_t cmd_len = 16 + length;
+  uint32_t* cmdData = (uint32_t*) malloc(cmd_len);
+
+  VERIFY (cmdData);
+
+  cmdData[0] = length;
+  cmdData[1] = _flashSequenceNumber++;
+  cmdData[2] = 0;
+  cmdData[3] = 0;
+
+  memcpy(&cmdData[4], data, length);
+  command(ESP_MEM_DATA, cmdData, cmd_len);
+
+  free(cmdData);
+
+  return (response(ESP_MEM_DATA, 3000) == 0);
+}
+
+bool ESP32BootROMClass::endMem(uint32_t entry) {
+  uint32_t data[2];
+  data[0] = (entry == 0);
+  data[1] = entry;
+
+  command(ESP_MEM_END, data, sizeof(data));
+
+  return (response(ESP_MEM_DATA, 3000) == 0);
+}
+
+bool ESP32BootROMClass::syncStub(void) {
+  // read OHAI packet
+  uint8_t const ohai[6] = { 0xc0, 0x4f, 0x48, 0x41, 0x49, 0xc0 };
+  uint8_t buf[6];
+  uint8_t count = 0;
+
+  uint32_t timeout_ms = 3000;
+  uint32_t start = millis();
+  while ( (count < 6) && (millis() - start) < timeout_ms) {
+    if (_serial->available()) {
+      buf[count] = _serial->read();
+      count++;
+    }
+  }
+
+  if ( count == 6 && 0 == memcmp(ohai, buf, 6) ) {
+    Serial.println("Stub running...\r\n");
+    return true;
+  }else{
+    Serial.printf("Failed to start stub. Unexpected response: count = %d", count);
+    for(size_t i=0; i<count; i++) {
+      Serial.printf("%02x ", buf[i]);
+    }
+    Serial.println();
+    return false;
+  }
+}
+
+bool ESP32BootROMClass::uploadStub(void) {
+  Serial.println("Uploading stub...");
+
+  uint32_t remain;
+  const uint8_t* buf;
+
+  // upload text
+  Serial.println("Uploading stub text...");
+  VERIFY( beginMem(stub_esp32_text_start, stub_esp32_text_length, ESP_RAM_BLOCK));
+
+  remain = stub_esp32_text_length;
+  buf  = stub_esp32_text;
+  while (remain) {
+    uint32_t const len = (remain > ESP_RAM_BLOCK) ? ESP_RAM_BLOCK : remain;
+    dataMem(buf, len);
+
+    buf += len;
+    remain -= len;
+  }
+
+  // upload data
+  Serial.println("Uploading stub data...");
+  VERIFY (beginMem(stub_esp32_data_start, stub_esp32_data_length, ESP_RAM_BLOCK));
+
+  remain = stub_esp32_data_length;
+  buf  = stub_esp32_data;
+  while (remain) {
+    uint32_t const len = (remain > ESP_RAM_BLOCK) ? ESP_RAM_BLOCK : remain;
+    dataMem(buf, len);
+
+    buf += len;
+    remain -= len;
+  }
+
+  // run stub
+  Serial.println("Running stub...");
+  VERIFY (endMem(stub_esp32_entry));
+
+  // sync stub
+  Serial.println("Syncing stub...");
+  VERIFY( syncStub());
+
+  Serial.println("LOCKED DOWN !!!");
+  while(1) {
+    delay(100);
+  }
+
+  return true;
+}
 
 
 
 
-
-/***************/
+//--------------------------------------------------------------------+
+// Command & Response
+//--------------------------------------------------------------------+
 
 void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t length) {
   uint32_t checksum = 0;
 
-  if (opcode == ESP_FLASH_DATA) {
-    checksum = 0xef; // seed
+  if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA) {
+    checksum = ESP_CHECKSUM_MAGIC; // seed
 
     for (uint16_t i = 16; i < length; i++) {
       checksum ^= ((const uint8_t *)data)[i];
