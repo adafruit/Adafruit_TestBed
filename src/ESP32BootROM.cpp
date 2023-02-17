@@ -404,7 +404,7 @@ bool ESP32BootROMClass::endMem(uint32_t entry) {
 
   command(ESP_MEM_END, data, sizeof(data));
 
-  return (response(ESP_MEM_DATA, 3000) == 0);
+  return (response(ESP_MEM_END, 3000) == 0);
 }
 
 bool ESP32BootROMClass::syncStub(void) {
@@ -422,15 +422,21 @@ bool ESP32BootROMClass::syncStub(void) {
     }
   }
 
-  if ( count == 6 && 0 == memcmp(ohai, buf, 6) ) {
-    Serial.println("Stub running...\r\n");
-    return true;
-  }else{
-    Serial.printf("Failed to start stub. Unexpected response: count = %d", count);
+#if DEBUG
+  if ( count ) {
+    Serial.print("<= ");
     for(size_t i=0; i<count; i++) {
       Serial.printf("%02x ", buf[i]);
     }
     Serial.println();
+  }
+#endif
+
+  if ( count == 6 && 0 == memcmp(ohai, buf, 6) ) {
+    Serial.println("Stub running...\r\n");
+    return true;
+  }else{
+    Serial.println("Failed to start stub. Unexpected response");
     return false;
   }
 }
@@ -475,17 +481,10 @@ bool ESP32BootROMClass::uploadStub(void) {
 
   // sync stub
   Serial.println("Syncing stub...");
-  VERIFY( syncStub());
-
-  Serial.println("LOCKED DOWN !!!");
-  while(1) {
-    delay(100);
-  }
+  VERIFY( syncStub() );
 
   return true;
 }
-
-
 
 
 //--------------------------------------------------------------------+
@@ -557,7 +556,6 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   if (data[0] != 0xc0 || data[1] != 0x01 || data[2] != opcode ||
       data[responseLength + 5] != 0x00 || data[responseLength + 6] != 0x00 ||
       data[responseLength + 9] != 0xc0) {
-    Serial.printf("Line %d: responseLength = %u\r\n", __LINE__, responseLength);
     return -1;
   }
 
