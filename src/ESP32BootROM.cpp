@@ -1,3 +1,5 @@
+#if defined(RP2040) // for RP2040 / Pico only for now
+
 /*
   ESP32BootROM - part of the Firmware Updater for the
   Arduino MKR WiFi 1010, Arduino MKR Vidor 4000, and Arduino UNO WiFi Rev.2.
@@ -433,3 +435,6 @@ void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
     }
   }
 }
+
+
+#endif

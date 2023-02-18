@@ -415,11 +415,13 @@ void Adafruit_TestBed_Brains::esp32_end(void) {
   esp32boot->end();
 }
 
-size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
+size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
                                                     uint32_t addr) {
+  Serial.println("A"); delay(10);
   if (!esp32boot) {
     return 0;
   }
+  Serial.println("B"); delay(10);
 
   enum { MAX_PAYLOAD_SIZE = 1024 };
 
@@ -428,17 +430,20 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
     LCD_printf_error("No memory %u\n", MAX_PAYLOAD_SIZE);
     return 0;
   }
+  Serial.println("Allocated payload OK");
 
   File32 fsrc = SD.open(fpath);
   if (!fsrc) {
     Serial.printf("SD: cannot open file: %s\r\n", fpath);
     return 0;
   }
+  Serial.printf("Opened file %s OK\n\r", fpath);
+
   uint32_t fsize = fsrc.fileSize();
   uint32_t total_count = 0;
 
   if (!esp32boot->beginFlash(addr, fsize, MAX_PAYLOAD_SIZE)) {
-    LCD_printf_error("beginFlash failed!");
+    LCD_printf_error("beginFlash fail!");
   } else {
     LCD_printf("#Packets %u", fsize / MAX_PAYLOAD_SIZE);
 

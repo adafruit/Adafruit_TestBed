@@ -1,3 +1,4 @@
+#if defined(RP2040)
 /*
   ESP32BootROM - part of the Firmware Updater for the
   Arduino MKR WiFi 1010, Arduino MKR Vidor 4000, and Arduino UNO WiFi Rev.2.
@@ -61,3 +62,4 @@ private:
   uint32_t _flashSequenceNumber;
   uint32_t _chunkSize;
 };
+#endif
