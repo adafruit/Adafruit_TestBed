@@ -156,25 +156,24 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   }
 
   Serial.println("Synced!");
-  
+
   uint32_t regvalue;
   if (!read_reg(CHIP_DETECT_MAGIC_REG_ADDR, &regvalue)) {
     return 0;
   }
-  switch (regvalue)
-    {
-    case 0x00F01D83:
-      Serial.println("Found ESP32");
-      break;
-    default:
-      Serial.println("Found unknown ESP");
-    }
+  switch (regvalue) {
+  case 0x00F01D83:
+    Serial.println("Found ESP32");
+    break;
+  default:
+    Serial.println("Found unknown ESP");
+  }
 
   uint32_t macaddr_hi, macaddr_lo;
   read_MAC(&macaddr_hi, &macaddr_lo);
   Serial.printf("MAC addr: %02X:%02X:%02X:%02X:%02X:%02X\n\r",
-                (macaddr_hi >> 8) & 0xFF, macaddr_hi & 0xFF, 
-                (macaddr_lo >> 24) & 0xFF, (macaddr_lo >> 16) & 0xFF, 
+                (macaddr_hi >> 8) & 0xFF, macaddr_hi & 0xFF,
+                (macaddr_lo >> 24) & 0xFF, (macaddr_lo >> 16) & 0xFF,
                 (macaddr_lo >> 8) & 0xFF, macaddr_lo & 0xFF);
 
   if (baudrate != 115200) {
@@ -298,8 +297,10 @@ int ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
   return 1;
 }
 
-bool ESP32BootROMClass::read_reg(uint32_t addr, uint32_t *val, uint32_t timeout_ms) {
-  const uint8_t data[4] = {(uint8_t)addr, (uint8_t)(addr >> 8), (uint8_t)(addr >> 16),  (uint8_t)(addr >> 24)};
+bool ESP32BootROMClass::read_reg(uint32_t addr, uint32_t *val,
+                                 uint32_t timeout_ms) {
+  const uint8_t data[4] = {(uint8_t)addr, (uint8_t)(addr >> 8),
+                           (uint8_t)(addr >> 16), (uint8_t)(addr >> 24)};
   command(ESP_READ_REG, data, sizeof(data));
 
   uint8_t reply[4];
@@ -327,14 +328,10 @@ bool ESP32BootROMClass::read_MAC(uint32_t *machi, uint32_t *maclo) {
   return true;
 }
 
-
-
-
-
-
 /***************/
 
-void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t length) {
+void ESP32BootROMClass::command(uint8_t opcode, const void *data,
+                                uint16_t length) {
   uint32_t checksum = 0;
 
   if (opcode == ESP_FLASH_DATA) {
@@ -359,7 +356,8 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t lengt
   DBG_PRINTF("c0\r\n");
 }
 
-int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body, uint16_t maxlen) {
+int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
+                                uint16_t maxlen) {
   uint8_t data[10 + 256];
   uint16_t index = 0;
 
@@ -435,6 +433,5 @@ void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
     }
   }
 }
-
 
 #endif

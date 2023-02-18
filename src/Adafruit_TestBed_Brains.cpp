@@ -416,12 +416,14 @@ void Adafruit_TestBed_Brains::esp32_end(void) {
 }
 
 size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
-                                                    uint32_t addr) {
-  Serial.println("A"); delay(10);
+                                                   uint32_t addr) {
+  Serial.println("A");
+  delay(10);
   if (!esp32boot) {
     return 0;
   }
-  Serial.println("B"); delay(10);
+  Serial.println("B");
+  delay(10);
 
   enum { MAX_PAYLOAD_SIZE = 1024 };
 
