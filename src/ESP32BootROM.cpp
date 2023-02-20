@@ -678,21 +678,13 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   }
 
   const char *mess_arr[0x0b + 1] = {
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      "Received message is invalid",
-      "Failed to act on received message",
-      "Invalid CRC in message",
+      NULL, NULL, NULL, NULL, NULL, "Received message is invalid",
+      "Failed to act on received message", "Invalid CRC in message",
       "Flash write error", //  after writing a block of data to flash, the ROM
                            //  loader reads the value back and the 8-bit CRC is
                            //  compared to the data read from flash. If they
                            //  don’t match, this error is returned.
-      "Flash read error",
-      "Flash read length error",
-      "Deflate error"};
+      "Flash read error", "Flash read length error", "Deflate error"};
 
   const char *mess =
       (status[1] <= 0x0b) ? mess_arr[status[1]] : "Unknown Error";
