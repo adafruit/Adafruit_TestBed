@@ -420,7 +420,7 @@ void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
 }
 
 size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
-                                                    uint32_t addr) {
+                                                   uint32_t addr) {
   if (!esp32boot) {
     return 0;
   }
