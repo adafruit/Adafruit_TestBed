@@ -473,8 +473,9 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
     // Stub only writes each block to flash after 'ack'ing the receive,
     // so do a final dummy operation which will not be 'ack'ed
     // until the last block has actually been written out to flash
-    if ( esp32boot->isRunningStub() ) {
-      while ( !esp32boot->read_chip_detect() ) {}
+    if (esp32boot->isRunningStub()) {
+      while (!esp32boot->read_chip_detect()) {
+      }
     }
 
     //------------- MD5 verification -------------//

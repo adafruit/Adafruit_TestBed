@@ -22,7 +22,7 @@
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG
 #define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
@@ -267,7 +267,8 @@ int ESP32BootROMClass::sync() {
 int ESP32BootROMClass::changeBaudrate(uint32_t baudrate) {
   // Two 32-bit words:
   // - new baud rate, and
-  // - 0 if we are talking to the ROM loader or the current/old baud rate if we are talking to the stub loader.
+  // - 0 if we are talking to the ROM loader or the current/old baud rate if we
+  // are talking to the stub loader.
   uint32_t data[2] = {baudrate, 0};
 
   if (_stub_running) {
@@ -286,9 +287,7 @@ int ESP32BootROMClass::spiAttach() {
   return (response(ESP_SPI_ATTACH, 3000) == 0);
 }
 
-bool ESP32BootROMClass::isRunningStub(void) {
-  return _stub_running;
-}
+bool ESP32BootROMClass::isRunningStub(void) { return _stub_running; }
 
 uint32_t ESP32BootROMClass::getFlashWriteSize(void) {
   return _stub_running ? FLASH_WRITE_SIZE_STUB : FLASH_WRITE_SIZE_NOSTUB;
@@ -511,8 +510,8 @@ bool ESP32BootROMClass::uploadStub(void) {
 // Command & Response
 //--------------------------------------------------------------------+
 
-void ESP32BootROMClass::command(uint8_t opcode, const void *data,
-                                uint16_t len, const void* data2, uint16_t len2) {
+void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
+                                const void *data2, uint16_t len2) {
   uint32_t checksum = 0;
 
   // for FLASH_DATA and MEM_DATA: data is header, data2 is actual payload
@@ -535,7 +534,7 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data,
 
   writeEscapedBytes((uint8_t *)&checksum, sizeof(checksum));
   writeEscapedBytes((uint8_t *)data, len);
-  if ( data2 && len2 ) {
+  if (data2 && len2) {
     writeEscapedBytes((uint8_t *)data2, len2);
   }
 
@@ -734,10 +733,8 @@ void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
                                           uint16_t length) {
   uint16_t written = 0;
 
-#if DEBUG
   // skip flashing data since it is a lot to print
   bool const print_payload = (length >= 1024) ? false : true;
-#endif
 
   while (written < length) {
     uint8_t b = data[written++];
@@ -746,25 +743,22 @@ void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
       _serial->write(0xdb);
       _serial->write(0xdd);
 
-#if DEBUG
-      if (print_payload)
+      if (DEBUG && print_payload) {
         DBG_PRINTF("db db ");
-#endif
+      }
     } else if (b == 0xc0) {
       _serial->write(0xdb);
       _serial->write(0xdc);
 
-#if DEBUG
-      if (print_payload)
+      if (DEBUG && print_payload) {
         DBG_PRINTF("db dc ");
-#endif
+      }
     } else {
       _serial->write(b);
 
-#if DEBUG
-      if (print_payload)
+      if (DEBUG && print_payload) {
         DBG_PRINTF("%02x ", b);
-#endif
+      }
     }
   }
 }
