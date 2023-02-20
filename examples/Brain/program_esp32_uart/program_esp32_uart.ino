@@ -127,7 +127,7 @@ void setup1() {
 // core1's loop: process usb host task on core1
 void loop1() {
   Brain.USBHost.task();
-  // Serial.flush();
+  yield();
 }
 
 //--------------------------------------------------------------------+

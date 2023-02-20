@@ -171,6 +171,8 @@ void loop1() {
   if ( SerialHost && SerialHost.connected() ) {
     SerialHost.flush();
   }
+
+  yield();
 }
 
 //--------------------------------------------------------------------+

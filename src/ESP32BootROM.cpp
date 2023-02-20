@@ -306,7 +306,6 @@ int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
   command(ESP_FLASH_BEGIN, data, len);
 
   _flashSequenceNumber = 0;
-  _chunkSize = chunkSize;
 
   return (response(ESP_FLASH_BEGIN, 120000) == 0);
 }
@@ -409,7 +408,6 @@ bool ESP32BootROMClass::beginMem(uint32_t offset, uint32_t size,
   command(ESP_MEM_BEGIN, data, len);
 
   _flashSequenceNumber = 0;
-  _chunkSize = chunkSize;
 
   return (response(ESP_MEM_BEGIN, 120000) == 0);
 }
@@ -551,10 +549,10 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
 // read until we found SLIP (0xC0) byte
 bool ESP32BootROMClass::readSLIP(uint32_t timeout_ms) {
   uint8_t slip = 0;
-  uint32_t start_ms = millis();
-  uint32_t end_ms = start_ms + timeout_ms;
-  while ((slip != 0xc0) && (end_ms - millis())) {
+  uint32_t end_ms = millis() + timeout_ms;
+  while ((slip != 0xc0) && (millis() < end_ms)) {
     readBytes(&slip, 1, end_ms - millis());
+    yield();
   }
   return slip == 0xc0;
 }
@@ -564,15 +562,15 @@ uint16_t ESP32BootROMClass::readBytes(void *buf, uint16_t length,
                                       uint32_t timeout_ms) {
   uint8_t *buf8 = (uint8_t *)buf;
   uint16_t count = 0;
-  uint32_t start = millis();
+  uint32_t end_ms = millis() + timeout_ms;
 
-  while ((count < length) && ((millis() - start) < timeout_ms)) {
+  while ((count < length) && (millis() < end_ms)) {
     if (_serial->available()) {
       uint8_t ch = (uint8_t)_serial->read();
 
       // escape
       if (ch == 0xdb) {
-        while (!_serial->available() && ((millis() - start) < timeout_ms)) {
+        while (!_serial->available() && (millis() < end_ms)) {
           yield();
         }
         uint8_t ch2 = (uint8_t)_serial->read();
@@ -615,15 +613,16 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   uint8_t const status_len = (_stub_running ? 2 : 4);
 
 #if 1
-  uint32_t start = millis();
-  uint32_t end_ms = start + timeout_ms;
+  uint32_t end_ms = millis() + timeout_ms;
 
   if (!readSLIP(timeout_ms)) {
+    Serial.printf("line %d\r\n", __LINE__);
     return -1;
   }
 
   // read fixed response first
   if (8 != readBytes(&fixed_resp, 8, end_ms - millis())) {
+    Serial.printf("line %d\r\n", __LINE__);
     return -1; // probably timeout
   }
 
@@ -633,6 +632,7 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
 
   if (payload_len) {
     if (payload_len != readBytes(data, payload_len, end_ms - millis())) {
+      Serial.printf("line %d\r\n", __LINE__);
       return -1; // probably timeout
     }
   }
@@ -647,10 +647,12 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
 
   // read status
   if (status_len != readBytes(status, status_len, end_ms - millis())) {
+    Serial.printf("line %d\r\n", __LINE__);
     return -1; // probably timeout
   }
 
   if (!readSLIP(end_ms - millis())) {
+    Serial.printf("line %d\r\n", __LINE__);
     return -1;
   }
 

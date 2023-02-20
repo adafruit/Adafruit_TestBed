@@ -73,5 +73,4 @@ private:
   bool _stub_running;
 
   uint32_t _flashSequenceNumber;
-  uint32_t _chunkSize;
 };
