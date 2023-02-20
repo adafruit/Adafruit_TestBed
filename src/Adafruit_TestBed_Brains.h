@@ -89,7 +89,7 @@ public:
 
   // program esp32 target with file from SDCard
   // return number of programmed bytes
-  size_t essp32_programFlash(const char *fpath, uint32_t addr);
+  size_t esp32_programFlash(const char *fpath, uint32_t addr);
 
   //--------------------------------------------------------------------+
   // Public Variables
