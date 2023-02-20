@@ -412,20 +412,13 @@ bool ESP32BootROMClass::beginMem(uint32_t offset, uint32_t size,
 }
 
 bool ESP32BootROMClass::dataMem(const void *data, uint32_t length) {
-  uint32_t cmd_len = 16 + length;
-  uint32_t *cmdData = (uint32_t *)malloc(cmd_len);
+  uint32_t header[4];
+  header[0] = length;
+  header[1] = _flashSequenceNumber++;
+  header[2] = 0;
+  header[3] = 0;
 
-  VERIFY(cmdData);
-
-  cmdData[0] = length;
-  cmdData[1] = _flashSequenceNumber++;
-  cmdData[2] = 0;
-  cmdData[3] = 0;
-
-  memcpy(&cmdData[4], data, length);
-  command(ESP_MEM_DATA, cmdData, cmd_len);
-
-  free(cmdData);
+  command(ESP_MEM_DATA, header, sizeof(header), data, length);
 
   return (response(ESP_MEM_DATA, 3000) == 0);
 }
