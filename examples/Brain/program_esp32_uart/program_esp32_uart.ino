@@ -94,7 +94,7 @@ void setup() {
   uint32_t ms = millis();
   for(size_t i=0; i<BIN_FILES_COUNT; i++) {
     Brain.LCD_printf("Flashing file %u", i);
-    size_t wr_count = Brain.essp32_programFlash(bin_files[i].fpath, bin_files[i].addr);
+    size_t wr_count = Brain.esp32_programFlash(bin_files[i].fpath, bin_files[i].addr);
     total_bytes += wr_count;
     if (!wr_count) {
       Brain.LCD_printf_error("Failed to flash");
