@@ -434,32 +434,25 @@ bool ESP32BootROMClass::endMem(uint32_t entry) {
   return (response(ESP_MEM_END, 3000) == 0);
 }
 
-bool ESP32BootROMClass::syncStub(void) {
+bool ESP32BootROMClass::syncStub(uint32_t timeout_ms) {
   // read OHAI packet
-  uint8_t const ohai[6] = {0xc0, 0x4f, 0x48, 0x41, 0x49, 0xc0};
-  uint8_t buf[6];
+  uint8_t const ohai[4] = {0x4f, 0x48, 0x41, 0x49};
+  uint8_t buf[4];
   uint8_t count = 0;
 
-  uint32_t timeout_ms = 3000;
-  uint32_t start = millis();
-  while ((count < 6) && (millis() - start) < timeout_ms) {
-    if (_serial->available()) {
-      buf[count] = _serial->read();
-      count++;
-    }
+  if (!readSLIP(timeout_ms)) {
+    return -1;
   }
 
-#if DEBUG
-  if (count) {
-    Serial.print("<= ");
-    for (size_t i = 0; i < count; i++) {
-      Serial.printf("%02x ", buf[i]);
-    }
-    Serial.println();
+  if ( 4 != readBytes(buf, 4, timeout_ms) ) {
+    return -1;
   }
-#endif
 
-  if (count == 6 && 0 == memcmp(ohai, buf, 6)) {
+  if (!readSLIP(timeout_ms)) {
+    return -1;
+  }
+
+  if (0 == memcmp(ohai, buf, 4)) {
     Serial.println("Stub running...\r\n");
     return true;
   } else {
@@ -510,7 +503,7 @@ bool ESP32BootROMClass::uploadStub(void) {
 
   // sync stub
   Serial.println("Syncing stub...");
-  VERIFY(syncStub());
+  VERIFY(syncStub(3000));
 
   _stub_running = true;
 
@@ -615,7 +608,9 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   uint32_t start = millis();
   uint32_t end_ms = start + timeout_ms;
 
-  readSLIP(timeout_ms);
+  if (!readSLIP(timeout_ms)) {
+    return -1;
+  }
 
   // read fixed response first
   if (8 != readBytes(&fixed_resp, 8, end_ms - millis())) {
@@ -645,7 +640,9 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
     return -1; // probably timeout
   }
 
-  readSLIP(end_ms - millis());
+  if ( !readSLIP(end_ms - millis()) ) {
+    return -1;
+  }
 
 #if DEBUG
   Serial.printf("<= c0 %02x %02x %04x %08x ", fixed_resp.dir, fixed_resp.opcode,

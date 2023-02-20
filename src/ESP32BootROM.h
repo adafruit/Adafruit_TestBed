@@ -65,7 +65,7 @@ private:
 
   // only needed for ESP32
   bool uploadStub(void);
-  bool syncStub(void);
+  bool syncStub(uint32_t timeout_ms);
 
 private:
   HardwareSerial *_serial;
