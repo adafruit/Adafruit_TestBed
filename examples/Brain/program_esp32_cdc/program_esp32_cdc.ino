@@ -16,10 +16,6 @@
 #define ESP32_RESET     27
 #define ESP32_IO0       28
 
-// false for ESP32 (default)
-// true for later chips such as S2, S3, H2, C3
-#define ESP32_SUPPORTS_ENCRYPTED_FLASH    true
-
 //#define ESP32_BAUDRATE  921600
 #define ESP32_BAUDRATE  115200
 
@@ -27,21 +23,23 @@
 Adafruit_USBH_CDC  SerialHost;
 
 // Defined an boot rom object that use UART Serial1
-ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET, ESP32_SUPPORTS_ENCRYPTED_FLASH);
+ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
 
 // Bin files on SDCard to program
 // These files can be found in raspi-tester (or compiled from Arduino sketch)
-#define BIN_FEATHER_ESP32S2   0
-#define BIN_FEATHER_ESP32S3   1
+#define BIN_FEATHER_S2   0
+#define BIN_FEATHER_S3   1
+#define BIN_DEVKIT_S2    2
+#define BIN_DEVKIT_S3    3
 
-#define BIN_FILES     BIN_FEATHER_ESP32S3 // select which bins to flash either Feather ESP32 S2 or S3
+#define BIN_FILES     BIN_DEVKIT_S3 // select which bins to flash
 
 struct {
   uint32_t addr;
   const char* fpath;
 } bin_files [] =
 {
-#if BIN_FILES == BIN_FEATHER_ESP32S2
+#if BIN_FILES == BIN_FEATHER_S2
   { 0x1000  , "esp32s2/PID5000/esp32s2_feather_test.ino.bootloader.bin" },
   { 0x8000  , "esp32s2/PID5000/esp32s2_feather_test.ino.partitions.bin" },
   { 0xe000  , "esp32s2/PID5000/boot_app0.bin"                           },
@@ -49,12 +47,26 @@ struct {
   { 0x2d0000, "esp32s2/PID5000/tinyuf2.bin"                             },
 #endif
 
-#if BIN_FILES == BIN_FEATHER_ESP32S3
+#if BIN_FILES == BIN_DEVKIT_S2
+  { 0x1000  , "esp32s2/devkit/Blink.ino.bootloader.bin" },
+  { 0x8000  , "esp32s2/devkit/Blink.ino.partitions.bin" },
+  { 0xe000  , "esp32s2/devkit/boot_app0.bin"           },
+  { 0x10000 , "esp32s2/devkit/Blink.ino.bin"            },
+#endif
+
+#if BIN_FILES == BIN_FEATHER_S3
   { 0x0000  , "esp32s3/PID5477/esp32s3_feather_test.ino.bootloader.bin" },
   { 0x8000  , "esp32s3/PID5477/esp32s3_feather_test.ino.partitions.bin" },
   { 0xe000  , "esp32s3/PID5477/boot_app0.bin"                           },
   { 0x10000 , "esp32s3/PID5477/esp32s3_feather_test.ino.bin"            },
   { 0x2d0000, "esp32s3/PID5477/tinyuf2.bin"                             },
+#endif
+
+#if BIN_FILES == BIN_DEVKIT_S3
+  { 0x0000  , "esp32s3/devkit/Blink.ino.bootloader.bin" },
+  { 0x8000  , "esp32s3/devkit/Blink.ino.partitions.bin" },
+  { 0xe000  , "esp32s3/devkit/boot_app0.bin"           },
+  { 0x10000 , "esp32s3/devkit/Blink.ino.bin"            },
 #endif
 };
 
@@ -114,7 +126,8 @@ void setup() {
   uint32_t ms = millis();
   for(size_t i=0; i<BIN_FILES_COUNT; i++) {
     Brain.LCD_printf("Flashing file %u", i);
-    size_t wr_count = Brain.essp32_programFlash(bin_files[i].fpath, bin_files[i].addr);
+    Serial.printf("filename = %s\r\n", bin_files[i].fpath);
+    size_t wr_count = Brain.esp32_programFlash(bin_files[i].fpath, bin_files[i].addr);
     total_bytes += wr_count;
     if (!wr_count) {
       Brain.LCD_printf_error("Failed to flash");
@@ -122,7 +135,7 @@ void setup() {
   }
   print_speed(total_bytes, millis() - ms);
 
-  Brain.esp32_end();
+  Brain.esp32_end(false);
 
   // reset ESP32 to run new firmware
   Brain.targetReset();
@@ -158,6 +171,8 @@ void loop1() {
   if ( SerialHost && SerialHost.connected() ) {
     SerialHost.flush();
   }
+
+  yield();
 }
 
 //--------------------------------------------------------------------+

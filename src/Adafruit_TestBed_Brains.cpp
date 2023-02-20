@@ -63,6 +63,10 @@ private:
   uint32_t crc;
 };
 
+static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
+  return (v + d - 1) / d;
+}
+
 /**************************************************************************/
 /*!
     @brief  Initializer, sets up the timestamp, neopixels, piezo, led,
@@ -410,65 +414,69 @@ bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
   return ret;
 }
 
-void Adafruit_TestBed_Brains::esp32_end(void) {
-  esp32boot->endFlash(false);
+void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
+  esp32boot->endFlash(reset_esp);
   esp32boot->end();
 }
 
 size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
                                                    uint32_t addr) {
-  Serial.println("A");
-  delay(10);
   if (!esp32boot) {
     return 0;
   }
-  Serial.println("B");
-  delay(10);
 
-  enum { MAX_PAYLOAD_SIZE = 1024 };
-
-  uint8_t *buf = (uint8_t *)malloc(MAX_PAYLOAD_SIZE);
+  uint32_t const block_size = esp32boot->getFlashWriteSize();
+  uint8_t *buf = (uint8_t *)malloc(block_size);
   if (!buf) {
-    LCD_printf_error("No memory %u\n", MAX_PAYLOAD_SIZE);
+    LCD_printf_error("No memory %u\n", block_size);
     return 0;
   }
-  Serial.println("Allocated payload OK");
 
   File32 fsrc = SD.open(fpath);
   if (!fsrc) {
     Serial.printf("SD: cannot open file: %s\r\n", fpath);
     return 0;
   }
-  Serial.printf("Opened file %s OK\n\r", fpath);
-
   uint32_t fsize = fsrc.fileSize();
   uint32_t total_count = 0;
 
-  if (!esp32boot->beginFlash(addr, fsize, MAX_PAYLOAD_SIZE)) {
-    LCD_printf_error("beginFlash fail!");
+  Serial.printf("fsize = %u, block size = %u\r\n", fsize, block_size);
+
+  if (!esp32boot->beginFlash(addr, fsize, block_size)) {
+    LCD_printf_error("beginFlash failed!");
   } else {
-    LCD_printf("#Packets %u", fsize / MAX_PAYLOAD_SIZE);
+    LCD_printf("#Packets %u", div_ceil(fsize, block_size));
 
     MD5Builder md5;
     md5.begin();
 
     //------------- Flashing  -------------//
     while (fsrc.available()) {
-      memset(buf, 0xff, MAX_PAYLOAD_SIZE); // empty it out
-      uint32_t rd_count = fsrc.read(buf, MAX_PAYLOAD_SIZE);
+      memset(buf, 0xff, block_size); // empty it out
+      uint32_t const rd_count = fsrc.read(buf, block_size);
 
       setLED(HIGH);
       Serial.printf("#");
-      if (!esp32boot->dataFlash(buf, MAX_PAYLOAD_SIZE)) {
+
+      if (!esp32boot->dataFlash(buf, block_size)) {
         LCD_printf_error("Failed to flash");
         break;
       }
+
       setLED(LOW);
 
       md5.add(buf, rd_count);
       total_count += rd_count;
     }
     Serial.println();
+
+    // Stub only writes each block to flash after 'ack'ing the receive,
+    // so do a final dummy operation which will not be 'ack'ed
+    // until the last block has actually been written out to flash
+    if (esp32boot->isRunningStub()) {
+      while (!esp32boot->read_chip_detect()) {
+      }
+    }
 
     //------------- MD5 verification -------------//
     md5.calculate();
