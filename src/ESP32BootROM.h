@@ -39,6 +39,7 @@ public:
   bool read_MAC(uint8_t mac[6]);
   uint32_t read_chip_detect(void);
 
+  bool isRunningStub(void);
   uint32_t getFlashWriteSize(void);
 
   int beginFlash(uint32_t offset, uint32_t size, uint32_t chunkSize);
@@ -48,10 +49,10 @@ public:
 
 private:
   int sync();
-  int changeBaudrate(unsigned long baudrate);
+  int changeBaudrate(uint32_t baudrate);
   int spiAttach();
 
-  void command(uint8_t opcode, const void *data, uint16_t length);
+  void command(uint8_t opcode, const void *data, uint16_t length, const void* data2 = NULL, uint16_t len2 = 0);
   int response(uint8_t opcode, uint32_t timeout_ms, void *body = NULL,
                uint16_t maxlen = 4);
 

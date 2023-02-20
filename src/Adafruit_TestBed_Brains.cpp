@@ -414,8 +414,8 @@ bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
   return ret;
 }
 
-void Adafruit_TestBed_Brains::esp32_end(void) {
-  esp32boot->endFlash(false);
+void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
+  esp32boot->endFlash(reset_esp);
   esp32boot->end();
 }
 
@@ -473,8 +473,9 @@ size_t Adafruit_TestBed_Brains::essp32_programFlash(const char *fpath,
     // Stub only writes each block to flash after 'ack'ing the receive,
     // so do a final dummy operation which will not be 'ack'ed
     // until the last block has actually been written out to flash
-    // esp.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR, timeout=timeout)
-    (void) esp32boot->read_chip_detect();
+    if ( esp32boot->isRunningStub() ) {
+      while ( !esp32boot->read_chip_detect() ) {}
+    }
 
     //------------- MD5 verification -------------//
     md5.calculate();
