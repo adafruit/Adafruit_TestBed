@@ -85,7 +85,7 @@ public:
   //--------------------------------------------------------------------+
 
   bool esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
-  void esp32_end(bool reset_esp);
+  void esp32_end(bool reset_esp = false);
 
   // program esp32 target with file from SDCard
   // return number of programmed bytes

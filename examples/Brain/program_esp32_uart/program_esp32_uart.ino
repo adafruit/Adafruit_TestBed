@@ -16,10 +16,6 @@
 #define ESP32_RESET     27
 #define ESP32_IO0       28
 
-// false for ESP32 (default)
-// true for later chips such as S2, S3, H2, C3
-#define ESP32_SUPPORTS_ENCRYPTED_FLASH    false
-
 #define ESP32_BAUDRATE  921600
 //#define ESP32_BAUDRATE  115200
 
@@ -42,7 +38,7 @@ enum {
 };
 
 // Defined an boot rom object that use UART Serial1
-ESP32BootROMClass ESP32BootROM(Serial1, ESP32_IO0, ESP32_RESET, ESP32_SUPPORTS_ENCRYPTED_FLASH);
+ESP32BootROMClass ESP32BootROM(Serial1, ESP32_IO0, ESP32_RESET);
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0

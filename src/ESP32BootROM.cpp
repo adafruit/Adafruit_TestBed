@@ -145,9 +145,9 @@ static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
 }
 
 ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
-                                     int resetnPin, bool supportsEncryptedFlash)
+                                     int resetnPin)
     : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin),
-      _supports_encrypted_flash(supportsEncryptedFlash), _stub_running(false) {}
+      _supports_encrypted_flash(true), _stub_running(false) {}
 
 int ESP32BootROMClass::begin(unsigned long baudrate) {
   _serial->begin(115200);
@@ -193,7 +193,9 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   switch (regvalue) {
   case CHIP_DETECT_MAGIC_ESP32:
     // newer module such as esp32 pico need stub to upload
+    // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false
     need_stub = true;
+    _supports_encrypted_flash = false;
     Serial.println("Found ESP32");
     break;
   case CHIP_DETECT_MAGIC_ESP32S2:
@@ -244,6 +246,8 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
 }
 
 void ESP32BootROMClass::end() {
+  digitalWrite(_gpio0Pin, HIGH);
+  digitalWrite(_resetnPin, HIGH);
   //_serial->end();
 }
 
@@ -296,8 +300,8 @@ uint32_t ESP32BootROMClass::getFlashWriteSize(void) {
 int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
                                   uint32_t chunkSize) {
 
-  const uint32_t data[] = {size, div_ceil(size, chunkSize), chunkSize, offset};
-  uint16_t const len = _supports_encrypted_flash ? 20 : 16;
+  const uint32_t data[5] = {size, div_ceil(size, chunkSize), chunkSize, offset, 0};
+  uint16_t const len = (_supports_encrypted_flash && !_stub_running) ? 20 : 16;
 
   command(ESP_FLASH_BEGIN, data, len);
 
@@ -668,8 +672,21 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
     return 0; // status[0];
   }
 
-  Serial.printf("response failed status = %02x %02x!\r\n", status[0],
-                status[1]);
+  const char * mess_arr[0x0b+1] =
+  {
+    NULL, NULL, NULL, NULL, NULL,
+    "Received message is invalid",
+    "Failed to act on received message",
+    "Invalid CRC in message",
+    "Flash write error", //  after writing a block of data to flash, the ROM loader reads the value back and the 8-bit CRC is compared to the data read from flash. If they don’t match, this error is returned.
+    "Flash read error",
+    "Flash read length error",
+    "Deflate error"
+  };
+
+  const char* mess = (status[1] <= 0x0b) ? mess_arr[status[1]] : "Unknown Error";
+  Serial.printf("response failed: status = %02x %02x, %s\r\n", status[0],
+                status[1], mess);
 
   return -1;
 
