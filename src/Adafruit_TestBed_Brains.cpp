@@ -439,7 +439,7 @@ size_t Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t* zf
   // Write Size is different depending on ROM (1K) or Stub (16KB)
   uint32_t const block_size = esp32boot->getFlashWriteSize();
 
-  Serial.printf("zip size = %u, raw size = %u, block size = %u\r\n", zfile->compressed_len, zfile->uncompressed_len, block_size);
+  Serial.printf("Compressed %u bytes to %u\r\n", zfile->uncompressed_len, zfile->compressed_len);
 
   if (!esp32boot->beginFlashDefl(addr, zfile->uncompressed_len, zfile->compressed_len)) {
     LCD_printf_error("beginFlash failed!");

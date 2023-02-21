@@ -24,7 +24,7 @@
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG
 #define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)

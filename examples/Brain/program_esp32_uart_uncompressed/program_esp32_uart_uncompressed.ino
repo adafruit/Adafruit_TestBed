@@ -127,22 +127,3 @@ void loop1() {
   yield();
 }
 
-//--------------------------------------------------------------------+
-// TinyUSB Host callbacks
-// Note: running in the same core where Brain.USBHost.task() is called
-//--------------------------------------------------------------------+
-extern "C"  {
-
-// Invoked when device is mounted (configured)
-void tuh_mount_cb (uint8_t dev_addr)
-{
-  (void) dev_addr;
-}
-
-/// Invoked when device is unmounted (bus reset/unplugged)
-void tuh_umount_cb(uint8_t dev_addr)
-{
-  (void) dev_addr;
-}
-
-}
