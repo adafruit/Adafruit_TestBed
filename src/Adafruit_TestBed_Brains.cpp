@@ -438,6 +438,15 @@ Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
     return 0;
   }
 
+  // Check if MD5 matches to skip this file
+  uint8_t esp_md5[16];
+  esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
+
+  if (0 == memcmp(zfile->md5, esp_md5, 16)) {
+    LCD_printf(2, "MD5 matched");
+    return zfile->uncompressed_len;
+  }
+
   // Write Size is different depending on ROM (1K) or Stub (16KB)
   uint32_t const block_size = esp32boot->getFlashWriteSize();
 
@@ -483,7 +492,6 @@ Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
     }
 
     //------------- MD5 verification -------------//
-    uint8_t esp_md5[16];
     esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
 
     if (0 == memcmp(zfile->md5, esp_md5, 16)) {

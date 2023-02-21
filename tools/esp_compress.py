@@ -42,7 +42,9 @@ with open(output_header, 'w') as fc:
                 fz.write(zimage)
 
             # write to c header file
-            var = fname.stem.replace('.', '_')
+            var = fname.stem
+            var = var.replace('.', '_')
+            var = var.replace('-', '_')
 
             # bin gz contents
             fc.write('const uint8_t _{}_gz[{}] = {{'.format(var, len(zimage)))
