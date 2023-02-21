@@ -155,7 +155,7 @@ ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
   _supports_encrypted_flash = true;
   _stub_running = false;
 
-   _flashSequenceNumber = 0;
+  _flashSequenceNumber = 0;
 }
 
 int ESP32BootROMClass::begin(unsigned long baudrate) {
@@ -349,14 +349,15 @@ int ESP32BootROMClass::endFlash(uint32_t reboot) {
 // Compressed (Deflated) Flashing
 //--------------------------------------------------------------------+
 
-bool ESP32BootROMClass::beginFlashDefl(uint32_t offset, uint32_t size, uint32_t zip_size) {
+bool ESP32BootROMClass::beginFlashDefl(uint32_t offset, uint32_t size,
+                                       uint32_t zip_size) {
   const uint32_t block_size = getFlashWriteSize();
-  uint32_t data[5] = {0, div_ceil(zip_size, block_size), block_size, offset, 0 };
+  uint32_t data[5] = {0, div_ceil(zip_size, block_size), block_size, offset, 0};
 
-  if ( _stub_running ) {
+  if (_stub_running) {
     // stub expects number of bytes here, manages erasing internally
     data[0] = size;
-  }else {
+  } else {
     // ROM expects rounded up to erase block size
     data[0] = div_ceil(size, block_size) * block_size;
   }
@@ -575,7 +576,8 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
   uint32_t checksum = 0;
 
   // for FLASH_DATA and MEM_DATA: data is header, data2 is actual payload
-  if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA || opcode == ESP_FLASH_DEFL_DATA) {
+  if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA ||
+      opcode == ESP_FLASH_DEFL_DATA) {
     checksum = ESP_CHECKSUM_MAGIC; // seed
 
     for (uint16_t i = 0; i < len2; i++) {
@@ -610,7 +612,7 @@ bool ESP32BootROMClass::readSLIP(uint32_t timeout_ms) {
   while (millis() < end_ms) {
     if (_serial->available()) {
       uint8_t ch = (uint8_t)_serial->read();
-      if ( ch == 0xc0 ) {
+      if (ch == 0xc0) {
         return true;
       }
     }

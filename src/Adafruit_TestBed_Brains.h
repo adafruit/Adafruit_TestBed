@@ -14,8 +14,8 @@
 #include "MD5Builder.h"
 
 typedef struct {
-  const char* name;
-  const uint8_t* data;
+  const char *name;
+  const uint8_t *data;
   const uint32_t compressed_len;
   const uint32_t uncompressed_len;
   const uint8_t md5[16];
@@ -100,7 +100,7 @@ public:
   size_t esp32_programFlash(const char *fpath, uint32_t addr);
 
   // program flash with compressed using zipfile struct
-  size_t esp32_programFlashDefl(const esp32_zipfile_t* zfile, uint32_t addr);
+  size_t esp32_programFlashDefl(const esp32_zipfile_t *zfile, uint32_t addr);
 
   //--------------------------------------------------------------------+
   // Public Variables

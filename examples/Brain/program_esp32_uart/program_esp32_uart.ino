@@ -46,10 +46,11 @@ ESP32BootROMClass ESP32BootROM(Serial1, ESP32_IO0, ESP32_RESET);
 //--------------------------------------------------------------------+
 
 void print_speed(size_t count, uint32_t ms) {
-  Brain.LCD_printf(0, "%.01fKB %.01fs", count/1000.0F, ms / 1000.0F);
-
-  Serial.printf("Completed %u bytes in %.02f seconds.\r\n", count, ms / 1000.0F);
-  Serial.printf("Speed : %.02f KB/s\r\n", (count / 1000.0F) / (ms / 1000.0F));
+  float count_k = count / 1000.0F;
+  float sec = ms / 1000.0F;
+  float speed = count_k / sec;
+  Brain.LCD_printf(0, "%.01fKB %.01fs", count_k, sec);
+  Brain.LCD_printf(1, "Spd: %.01f KB/s", speed);
 }
 
 void setup() {
@@ -68,7 +69,7 @@ void setup() {
   size_t total_bytes = 0;
   uint32_t ms = millis();
   for(size_t i=0; i<BIN_LIST_COUNT; i++) {
-    Brain.LCD_printf("Flashing file %u", i);
+    Brain.LCD_printf(0, "Flashing file %u", i);
     size_t wr_count = Brain.esp32_programFlashDefl(bin_list[i].zfile, bin_list[i].addr);
     total_bytes += wr_count;
     if (!wr_count) {
