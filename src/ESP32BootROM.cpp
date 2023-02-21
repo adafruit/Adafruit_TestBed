@@ -198,7 +198,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
     return 0;
   }
 
-  const stub_loader_t *stub = NULL;
+  const esp32_stub_loader_t *stub = NULL;
   switch (chip_detect) {
   case CHIP_DETECT_MAGIC_ESP32:
     // newer module such as esp32 pico need stub to upload
@@ -524,7 +524,7 @@ bool ESP32BootROMClass::syncStub(uint32_t timeout_ms) {
   }
 }
 
-bool ESP32BootROMClass::uploadStub(const stub_loader_t *stub) {
+bool ESP32BootROMClass::uploadStub(const esp32_stub_loader_t *stub) {
   Serial.println("Uploading stub...");
 
   uint32_t remain;

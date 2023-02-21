@@ -294,7 +294,7 @@ const uint8_t _stub_esp32_text[3432] = {
     0x06, 0x0c, 0x12, 0x29, 0x03, 0x22, 0xa0, 0xdb, 0x1d, 0xf0, 0x00, 0x00,
 };
 
-const stub_loader_t stub_esp32 = {
+const esp32_stub_loader_t stub_esp32 = {
     .entry = 0x400be5ac,
     .text_start = 0x400be000,
     .text_length = 3432,

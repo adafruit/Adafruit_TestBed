@@ -33,7 +33,7 @@ typedef struct {
   uint32_t data_start;
   uint32_t data_length;
   const uint8_t *data;
-} stub_loader_t;
+} esp32_stub_loader_t;
 
 class ESP32BootROMClass {
 public:
@@ -81,7 +81,7 @@ private:
   bool endMem(uint32_t entry);
 
   // only needed for ESP32
-  bool uploadStub(const stub_loader_t *stub);
+  bool uploadStub(const esp32_stub_loader_t *stub);
   bool syncStub(uint32_t timeout_ms);
 
 private:

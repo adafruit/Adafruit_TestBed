@@ -51,7 +51,7 @@ def print_stub(mcu):
     print ("const uint8_t _stub_%s_text[%d] = {" % (mcu, len(text)))
     print_array(text)
 
-    print("const stub_loader_t stub_%s = {" % mcu)
+    print("const esp32_stub_loader_t stub_%s = {" % mcu)
     print("  .entry = 0x%08x," % stub[mcu]["entry"])
 
     print("  .text_start = 0x%08x," % stub[mcu]["text_start"])
