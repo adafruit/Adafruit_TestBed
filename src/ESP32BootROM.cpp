@@ -152,7 +152,7 @@ ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
       _supports_encrypted_flash(true), _stub_running(false) {}
 
 int ESP32BootROMClass::begin(unsigned long baudrate) {
-  _serial->begin(115200);
+  _serial->begin(ESP_ROM_BAUD);
 
   pinMode(_gpio0Pin, OUTPUT);
   pinMode(_resetnPin, OUTPUT);
@@ -162,7 +162,6 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   delay(100);
 
   digitalWrite(_resetnPin, HIGH);
-  // delay(50);
 
   // Wait for serial, needed if using with SerialHost (host cdc)
   while (!_serial) {
@@ -227,7 +226,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
     VERIFY(syncStub(3000));
   }
 
-  if (baudrate != 115200) {
+  if (baudrate != ESP_ROM_BAUD) {
     if (!changeBaudrate(baudrate)) {
       Serial.print("Failed to change baudrate");
       return 0;
@@ -280,7 +279,7 @@ int ESP32BootROMClass::changeBaudrate(uint32_t baudrate) {
   uint32_t data[2] = {baudrate, 0};
 
   if (_stub_running) {
-    data[1] = 115200; // we only changed from 115200 to higher baud
+    data[1] = ESP_ROM_BAUD; // we only changed from 115200 to higher baud
   }
 
   command(ESP_CHANGE_BAUDRATE, data, sizeof(data));
@@ -551,13 +550,16 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
 
 // read until we found SLIP (0xC0) byte
 bool ESP32BootROMClass::readSLIP(uint32_t timeout_ms) {
-  uint8_t slip = 0;
-  uint32_t end_ms = millis() + timeout_ms;
-  while ((slip != 0xc0) && (millis() < end_ms)) {
-    readBytes(&slip, 1, end_ms - millis());
-    yield();
+  uint32_t const end_ms = millis() + timeout_ms;
+  while (millis() < end_ms) {
+    if (_serial->available()) {
+      uint8_t ch = (uint8_t)_serial->read();
+      if ( ch == 0xc0 ) {
+        return true;
+      }
+    }
   }
-  return slip == 0xc0;
+  return false;
 }
 
 // Read response bytes from ESP32, return number of received bytes
@@ -619,7 +621,6 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   uint32_t end_ms = millis() + timeout_ms;
 
   if (!readSLIP(timeout_ms)) {
-    Serial.printf("line %d\r\n", __LINE__);
     return -1;
   }
 

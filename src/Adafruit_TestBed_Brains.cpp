@@ -425,6 +425,7 @@ size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
     return 0;
   }
 
+  // Write Size is different depending on ROM (1K) or Stub (16KB)
   uint32_t const block_size = esp32boot->getFlashWriteSize();
   uint8_t *buf = (uint8_t *)malloc(block_size);
   if (!buf) {
