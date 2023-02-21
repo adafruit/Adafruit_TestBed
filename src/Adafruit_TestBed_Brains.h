@@ -91,6 +91,9 @@ public:
   // return number of programmed bytes
   size_t esp32_programFlash(const char *fpath, uint32_t addr);
 
+  // program flash with compressed using zipfile struct
+  int esp32_programFlashZip(const esp32_zipfile_t* zfile, uint32_t addr);
+
   //--------------------------------------------------------------------+
   // Public Variables
   //--------------------------------------------------------------------+

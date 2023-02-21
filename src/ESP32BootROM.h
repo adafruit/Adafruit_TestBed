@@ -33,6 +33,14 @@ typedef struct {
   const uint8_t *data;
 } stub_loader_t;
 
+typedef struct {
+  const char* name;
+  const uint8_t* data;
+  const uint32_t compressed_len;
+  const uint32_t uncompressed_len;
+  const uint8_t md5[16];
+} esp32_zipfile_t;
+
 class ESP32BootROMClass {
 public:
   ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin);

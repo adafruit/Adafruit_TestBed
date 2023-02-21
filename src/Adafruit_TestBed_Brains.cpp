@@ -419,6 +419,10 @@ void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
   esp32boot->end();
 }
 
+int Adafruit_TestBed_Brains::esp32_programFlashZip(const esp32_zipfile_t* zfile, uint32_t addr) {
+  return 1;
+}
+
 size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
                                                    uint32_t addr) {
   if (!esp32boot) {
