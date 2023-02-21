@@ -15,7 +15,7 @@ if len(sys.argv) == 1:
     dir = Path('./')
 else:
     # only take 1 argument
-    dir = Path(sys.argv[2])
+    dir = Path(sys.argv[1])
 
 def print_carray(f, payload):
     while len(payload) > 0:
@@ -42,7 +42,7 @@ with open(output_header, 'w') as fc:
                 fz.write(zimage)
 
             # write to c header file
-            var = os.path.basename(fname.with_suffix(''))
+            var = fname.stem.replace('.', '_')
 
             # bin gz contents
             fc.write('const uint8_t _{}_gz[{}] = {{'.format(var, len(zimage)))

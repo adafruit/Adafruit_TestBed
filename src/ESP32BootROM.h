@@ -18,6 +18,8 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+#ifndef ESP32_BOOTROM_H
+#define ESP32_BOOTROM_H
 
 #include <Arduino.h>
 
@@ -32,14 +34,6 @@ typedef struct {
   uint32_t data_length;
   const uint8_t *data;
 } stub_loader_t;
-
-typedef struct {
-  const char* name;
-  const uint8_t* data;
-  const uint32_t compressed_len;
-  const uint32_t uncompressed_len;
-  const uint8_t md5[16];
-} esp32_zipfile_t;
 
 class ESP32BootROMClass {
 public:
@@ -56,9 +50,16 @@ public:
   bool isRunningStub(void);
   uint32_t getFlashWriteSize(void);
 
+  // uncompressed
   int beginFlash(uint32_t offset, uint32_t size, uint32_t chunkSize);
   int dataFlash(const void *data, uint32_t length);
   int endFlash(uint32_t reboot);
+
+  // compressed
+  bool beginFlashDefl(uint32_t offset, uint32_t size, uint32_t zip_size);
+  bool dataFlashDefl(const void *data, uint32_t len);
+  bool endFlashDefl(uint32_t reboot);
+
   bool md5Flash(uint32_t offset, uint32_t size, uint8_t *result);
 
 private:
@@ -92,3 +93,5 @@ private:
 
   uint32_t _flashSequenceNumber;
 };
+
+#endif

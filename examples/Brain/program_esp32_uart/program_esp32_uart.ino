@@ -61,28 +61,6 @@ ESP32BootROMClass ESP32BootROM(Serial1, ESP32_IO0, ESP32_RESET);
 // Setup and Loop on Core0
 //--------------------------------------------------------------------+
 
-void prepare_sd(void) {
-  if (!Brain.SD_detected()) {
-    Brain.LCD_printf(0, "No SD Card");
-    while ( !Brain.SD_detected() ) delay(10);
-  }
-
-  if ( !Brain.SD_begin(SD_SCK_MHZ(16)) ) {
-    Brain.LCD_printf(0, "SD init failed");
-    while(1) delay(10);
-  }
-
-  Brain.LCD_printf(0, "SD mounted");
-
-  // Print out file on SD if Serial is connected
-  if (Serial) {
-    Serial.println();
-    Serial.println("SD Contents:");
-    Serial.printf("Card size = %0.1f GB\n", 0.000000512 * Brain.SD.card()->sectorCount());
-    Brain.SD.ls(LS_R | LS_DATE | LS_SIZE);
-  }
-}
-
 void print_speed(size_t count, uint32_t ms) {
   Brain.LCD_printf(0, "%.01fKB %.01fs", count/1000.0F, ms / 1000.0F);
 
@@ -97,9 +75,6 @@ void setup() {
 
   Brain.begin();
 
-  // prepare SD Card
-  prepare_sd();
-
   while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
     // retry syncing
     delay(100);
@@ -110,7 +85,7 @@ void setup() {
   uint32_t ms = millis();
   for(size_t i=0; i<BIN_LIST_COUNT; i++) {
     Brain.LCD_printf("Flashing file %u", i);
-    size_t wr_count = Brain.esp32_programFlashZip(bin_list[i].zfile, bin_list[i].addr);
+    size_t wr_count = Brain.esp32_programFlashDefl(bin_list[i].zfile, bin_list[i].addr);
     total_bytes += wr_count;
     if (!wr_count) {
       Brain.LCD_printf_error("Failed to flash");
@@ -118,7 +93,7 @@ void setup() {
   }
   print_speed(total_bytes, millis() - ms);
 
-  Brain.esp32_end(false);
+  Brain.esp32_end();
 
   // reset ESP32 to run new firmware
   Brain.targetReset();

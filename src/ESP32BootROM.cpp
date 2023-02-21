@@ -24,7 +24,7 @@
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG
 #define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
@@ -148,8 +148,15 @@ static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
 
 ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
                                      int resetnPin)
-    : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin),
-      _supports_encrypted_flash(true), _stub_running(false) {}
+    : _serial(&serial) {
+  _gpio0Pin = gpio0Pin;
+  _resetnPin = resetnPin;
+
+  _supports_encrypted_flash = true;
+  _stub_running = false;
+
+   _flashSequenceNumber = 0;
+}
 
 int ESP32BootROMClass::begin(unsigned long baudrate) {
   _serial->begin(ESP_ROM_BAUD);
@@ -300,6 +307,9 @@ uint32_t ESP32BootROMClass::getFlashWriteSize(void) {
   return _stub_running ? FLASH_WRITE_SIZE_STUB : FLASH_WRITE_SIZE_NOSTUB;
 }
 
+//--------------------------------------------------------------------+
+// Uncompressed Flashing
+//--------------------------------------------------------------------+
 int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
                                   uint32_t chunkSize) {
 
@@ -333,6 +343,52 @@ int ESP32BootROMClass::endFlash(uint32_t reboot) {
   command(ESP_FLASH_END, data, sizeof(data));
 
   return (response(ESP_FLASH_END, 3000) == 0);
+}
+
+//--------------------------------------------------------------------+
+// Compressed (Deflated) Flashing
+//--------------------------------------------------------------------+
+
+bool ESP32BootROMClass::beginFlashDefl(uint32_t offset, uint32_t size, uint32_t zip_size) {
+  const uint32_t block_size = getFlashWriteSize();
+  uint32_t data[5] = {0, div_ceil(zip_size, block_size), block_size, offset, 0 };
+
+  if ( _stub_running ) {
+    // stub expects number of bytes here, manages erasing internally
+    data[0] = size;
+  }else {
+    // ROM expects rounded up to erase block size
+    data[0] = div_ceil(size, block_size) * block_size;
+  }
+
+  uint16_t const len = (_supports_encrypted_flash && !_stub_running) ? 20 : 16;
+
+  command(ESP_FLASH_DEFL_BEGIN, data, len);
+
+  _flashSequenceNumber = 0;
+
+  return (response(ESP_FLASH_DEFL_BEGIN, 3000) == 0);
+}
+
+bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
+  uint32_t header[4];
+
+  header[0] = len;
+  header[1] = _flashSequenceNumber++;
+  header[2] = 0;
+  header[3] = 0;
+
+  command(ESP_FLASH_DEFL_DATA, header, sizeof(header), data, len);
+
+  return (response(ESP_FLASH_DEFL_DATA, 3000) == 0);
+}
+
+bool ESP32BootROMClass::endFlashDefl(uint32_t reboot) {
+  const uint32_t data[1] = {reboot};
+
+  command(ESP_FLASH_DEFL_END, data, sizeof(data));
+
+  return (response(ESP_FLASH_DEFL_END, 3000) == 0);
 }
 
 bool ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
@@ -519,7 +575,7 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
   uint32_t checksum = 0;
 
   // for FLASH_DATA and MEM_DATA: data is header, data2 is actual payload
-  if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA) {
+  if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA || opcode == ESP_FLASH_DEFL_DATA) {
     checksum = ESP_CHECKSUM_MAGIC; // seed
 
     for (uint16_t i = 0; i < len2; i++) {
