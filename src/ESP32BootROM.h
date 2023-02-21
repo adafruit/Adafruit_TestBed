@@ -23,6 +23,16 @@
 
 #define ESP32_DEFAULT_TIMEOUT 3000
 
+typedef struct {
+  uint32_t entry;
+  uint32_t text_start;
+  uint32_t text_length;
+  const uint8_t *text;
+  uint32_t data_start;
+  uint32_t data_length;
+  const uint8_t *data;
+} stub_loader_t;
+
 class ESP32BootROMClass {
 public:
   ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin);
@@ -62,7 +72,7 @@ private:
   bool endMem(uint32_t entry);
 
   // only needed for ESP32
-  bool uploadStub(void);
+  bool uploadStub(const stub_loader_t *stub);
   bool syncStub(uint32_t timeout_ms);
 
 private:

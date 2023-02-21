@@ -192,11 +192,13 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
     return 0;
   }
 
+  const stub_loader_t *stub = NULL;
   switch (chip_detect) {
   case CHIP_DETECT_MAGIC_ESP32:
     // newer module such as esp32 pico need stub to upload
     // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false
     need_stub = true;
+    stub = &stub_esp32;
     _supports_encrypted_flash = false;
     Serial.println("Found ESP32");
     break;
@@ -221,7 +223,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
 #endif
 
   if (need_stub) {
-    VERIFY(uploadStub());
+    VERIFY(uploadStub(stub));
     VERIFY(syncStub(3000));
   }
 
@@ -466,7 +468,7 @@ bool ESP32BootROMClass::syncStub(uint32_t timeout_ms) {
   }
 }
 
-bool ESP32BootROMClass::uploadStub(void) {
+bool ESP32BootROMClass::uploadStub(const stub_loader_t *stub) {
   Serial.println("Uploading stub...");
 
   uint32_t remain;
@@ -474,11 +476,10 @@ bool ESP32BootROMClass::uploadStub(void) {
 
   // upload text
   Serial.println("Uploading stub text...");
-  VERIFY(
-      beginMem(stub_esp32_text_start, stub_esp32_text_length, ESP_RAM_BLOCK));
+  VERIFY(beginMem(stub->text_start, stub->text_length, ESP_RAM_BLOCK));
 
-  remain = stub_esp32_text_length;
-  buf = stub_esp32_text;
+  remain = stub->text_length;
+  buf = stub->text;
   while (remain) {
     uint32_t const len = (remain > ESP_RAM_BLOCK) ? ESP_RAM_BLOCK : remain;
     dataMem(buf, len);
@@ -489,11 +490,10 @@ bool ESP32BootROMClass::uploadStub(void) {
 
   // upload data
   Serial.println("Uploading stub data...");
-  VERIFY(
-      beginMem(stub_esp32_data_start, stub_esp32_data_length, ESP_RAM_BLOCK));
+  VERIFY(beginMem(stub->data_start, stub->data_length, ESP_RAM_BLOCK));
 
-  remain = stub_esp32_data_length;
-  buf = stub_esp32_data;
+  remain = stub->data_length;
+  buf = stub->data;
   while (remain) {
     uint32_t const len = (remain > ESP_RAM_BLOCK) ? ESP_RAM_BLOCK : remain;
     dataMem(buf, len);
@@ -504,7 +504,7 @@ bool ESP32BootROMClass::uploadStub(void) {
 
   // run stub
   Serial.println("Running stub...");
-  VERIFY(endMem(stub_esp32_entry));
+  VERIFY(endMem(stub->entry));
 
   _stub_running = true;
 
