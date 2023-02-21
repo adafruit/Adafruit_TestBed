@@ -187,12 +187,12 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   bool need_stub = false;
 
   //------------- Chip Detect -------------//
-  uint32_t regvalue;
-  if (!read_reg(CHIP_DETECT_MAGIC_REG_ADDR, &regvalue)) {
+  uint32_t chip_detect = read_chip_detect();
+  if (!chip_detect) {
     return 0;
   }
 
-  switch (regvalue) {
+  switch (chip_detect) {
   case CHIP_DETECT_MAGIC_ESP32:
     // newer module such as esp32 pico need stub to upload
     // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false

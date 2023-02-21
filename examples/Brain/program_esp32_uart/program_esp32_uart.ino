@@ -16,7 +16,8 @@
 #define ESP32_RESET     27
 #define ESP32_IO0       28
 
-#define ESP32_BAUDRATE  921600
+#define ESP32_BAUDRATE  2000000
+//#define ESP32_BAUDRATE  921600
 //#define ESP32_BAUDRATE  115200
 
 // Bin files on SDCard to program
@@ -78,15 +79,14 @@ void setup() {
   while (!Serial) delay(10);
   Serial.println("Tester Brains: Programming ESP32 with UART!");
 
-  // sync: wait for Brain.begin() called in core1 before accessing SD or other peripherals
-  while (!Brain.inited()) delay(10);
+  Brain.begin();
 
   // prepare SD Card
   prepare_sd();
 
   while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
     // retry syncing
-    delay(1000);
+    delay(100);
   }
 
   // Writing bin files
@@ -118,15 +118,11 @@ void loop() {
 // call usbh_begin() here to make pio usb background task run on core1
 // NOTE: Brain.begin() should be called here as well to prevent race condition
 void setup1() {
-  Brain.begin();
-  Brain.usbh_begin();
 
-  Brain.LCD_printf(1, "No USB Device");
 }
 
 // core1's loop: process usb host task on core1
 void loop1() {
-  Brain.USBHost.task();
   yield();
 }
 
@@ -146,7 +142,6 @@ void tuh_mount_cb (uint8_t dev_addr)
 void tuh_umount_cb(uint8_t dev_addr)
 {
   (void) dev_addr;
-  Brain.LCD_printf(1, "No USB Device");
 }
 
 }

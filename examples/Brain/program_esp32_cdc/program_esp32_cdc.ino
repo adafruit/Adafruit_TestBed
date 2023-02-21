@@ -119,6 +119,7 @@ void setup() {
   prepare_sd();
 
   while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
+    delay(100);
   }
 
   // Writing bin files
