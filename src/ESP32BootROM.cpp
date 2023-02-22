@@ -28,9 +28,17 @@
 
 #if DEBUG
 #define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
+
+#define DBG_PRINT_BUF(_buf, _len) \
+  do { \
+    for (int _i = 0; _i < _len; _i++) Serial.printf("%02x ", (_buf)[_i]); \
+  } while(0)
+
 #else
 #define DBG_PRINTF(...)
+#define DBG_PRINT_BUF(_buf, _len)
 #endif
+
 
 #define VERIFY(_cond)                                                          \
   do {                                                                         \
@@ -589,9 +597,9 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
 
   DBG_PRINTF("=> c0 00 %02x %04x ", opcode, total_len);
 
-  _serial->write(0xc0);
-  _serial->write((uint8_t)0x00); // direction
-  _serial->write(opcode);
+  uint8_t const header[3] = { 0xc0, 0x00, opcode };
+
+  _serial->write(header, 3);
   _serial->write((uint8_t *)&total_len, 2);
 
   writeEscapedBytes((uint8_t *)&checksum, sizeof(checksum));
@@ -669,13 +677,12 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
     uint8_t dir; // 0x01 for response
     uint8_t opcode;
     uint16_t length; // at least 2 (or 4) for status bytes
-    uint32_t
-        reg_value; // Response value used by READ_REG command. Zero otherwise.
+    uint32_t reg_value; // READ_REG response. zero otherwise
   } fixed_resp;
+
   uint8_t status[4] = {0};
   uint8_t const status_len = (_stub_running ? 2 : 4);
 
-#if 1
   uint32_t end_ms = millis() + timeout_ms;
 
   if (!readSLIP(timeout_ms)) {
@@ -721,12 +728,8 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
 #if DEBUG
   Serial.printf("<= c0 %02x %02x %04x %08x ", fixed_resp.dir, fixed_resp.opcode,
                 fixed_resp.length, fixed_resp.reg_value);
-  for (int i = 0; i < payload_len; i++) {
-    Serial.printf("%02x ", data[i]);
-  }
-  for (int i = 0; i < status_len; i++) {
-    Serial.printf("%02x ", status[i]);
-  }
+  DBG_PRINT_BUF(data, payload_len);
+  DBG_PRINT_BUF(status, status_len);
   Serial.println("c0");
 #endif
 
@@ -751,93 +754,46 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
                 status[1], mess);
 
   return -1;
-
-#else 0
-  uint8_t data[10 + 256];
-  uint16_t index = 0;
-
-  uint8_t responseLength = 4;
-
-  unsigned long start = millis();
-  while ((millis() - start) < timeout_ms) {
-    if (_serial->available()) {
-      data[index] = _serial->read();
-
-      if (index == 3) {
-        responseLength = data[index];
-      }
-
-      index++;
-    }
-    if (index >= (uint16_t)(10 + responseLength)) {
-      break;
-    }
-  }
-
-#if DEBUG
-  if (index) {
-    Serial.print("<= ");
-    for (int i = 0; i < index; i++) {
-      Serial.printf("%02x ", data[i]);
-    }
-    Serial.println();
-  }
-#endif
-
-  if (index != (uint16_t)(10 + responseLength)) {
-    // Serial.printf("index = %u\r\n", index);
-    return -1;
-  }
-
-  if (data[0] != 0xc0 || data[1] != 0x01 || data[2] != opcode ||
-      data[responseLength + 5] != 0x00 || data[responseLength + 6] != 0x00 ||
-      data[responseLength + 9] != 0xc0) {
-    Serial.printf("responseLength = %u\r\n", responseLength);
-    return -1;
-  }
-
-  if (body) {
-    if (opcode == ESP_READ_REG) {
-      memcpy(body, &data[5], maxlen);
-    } else {
-      memcpy(body, &data[9], responseLength - 4);
-    }
-  }
-
-  return data[responseLength + 5];
-#endif
 }
 
 void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
                                           uint16_t length) {
-  uint16_t written = 0;
-
   // skip flashing data since it is a lot to print
-  bool const print_payload = (length >= 1024) ? false : true;
+  bool const print_payload = (length >= 200) ? false : true;
 
-  while (written < length) {
-    uint8_t b = data[written++];
+  uint16_t last_wr = 0;
+  for(uint16_t i=0; i<length; i++) {
+    uint8_t b = data[i];
 
-    if (b == 0xdb) {
-      _serial->write(0xdb);
-      _serial->write(0xdd);
+    if (b == 0xdb || b == 0xc0) {
+      // write up to i-1
+      if ( last_wr < i ) {
+        _serial->write(data+last_wr, i - last_wr);
+
+        if (DEBUG && print_payload) {
+          DBG_PRINT_BUF(data+last_wr, i - last_wr);
+        }
+      }
+
+      uint8_t esc[2] = { 0xdb, 0x00 };
+      esc[1] = (b == 0xdb) ?  0xdd : 0xdc;
+
+      _serial->write(esc, 2);
+
+      // +1 since we already write current index with escape
+      last_wr = i+1;
 
       if (DEBUG && print_payload) {
-        DBG_PRINTF("db db ");
+        DBG_PRINTF(esc, 2);
       }
-    } else if (b == 0xc0) {
-      _serial->write(0xdb);
-      _serial->write(0xdc);
+    }
+  }
 
-      if (DEBUG && print_payload) {
-        DBG_PRINTF("db dc ");
-      }
-    } else {
-      _serial->write(b);
-
-      if (DEBUG && print_payload) {
-        DBG_PRINTF("%02x ", b);
-      }
+  // last chunk without escape
+  if (last_wr < length) {
+    _serial->write(data+last_wr, length-last_wr);
+    if (DEBUG && print_payload) {
+      DBG_PRINT_BUF(data+last_wr, length - last_wr);
     }
   }
 }

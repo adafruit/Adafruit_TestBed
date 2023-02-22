@@ -27,10 +27,15 @@ struct {
   uint32_t addr;
   esp32_zipfile_t const * zfile;
 } bin_list[] = {
+
+#if 1
   { 0x10000, &WiFiAccessPoint_ino            },
   { 0x1000 , &WiFiAccessPoint_ino_bootloader },
   { 0x8000 , &WiFiAccessPoint_ino_partitions },
   { 0xe000 , &boot_app0                      },
+#else
+  { 0x00000, &NINA_W102_1_7_4            },
+#endif
 };
 
 enum {
