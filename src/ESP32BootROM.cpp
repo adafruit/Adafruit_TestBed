@@ -28,8 +28,16 @@
 
 #if DEBUG
 #define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
+
+#define DBG_PRINT_BUF(_buf, _len)                                              \
+  do {                                                                         \
+    for (int _i = 0; _i < _len; _i++)                                          \
+      Serial.printf("%02x ", (_buf)[_i]);                                      \
+  } while (0)
+
 #else
 #define DBG_PRINTF(...)
+#define DBG_PRINT_BUF(_buf, _len)
 #endif
 
 #define VERIFY(_cond)                                                          \
@@ -148,11 +156,18 @@ static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
 
 ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
                                      int resetnPin)
-    : _serial(&serial), _gpio0Pin(gpio0Pin), _resetnPin(resetnPin),
-      _supports_encrypted_flash(true), _stub_running(false) {}
+    : _serial(&serial) {
+  _gpio0Pin = gpio0Pin;
+  _resetnPin = resetnPin;
+
+  _supports_encrypted_flash = true;
+  _stub_running = false;
+
+  _flashSequenceNumber = 0;
+}
 
 int ESP32BootROMClass::begin(unsigned long baudrate) {
-  _serial->begin(115200);
+  _serial->begin(ESP_ROM_BAUD);
 
   pinMode(_gpio0Pin, OUTPUT);
   pinMode(_resetnPin, OUTPUT);
@@ -162,7 +177,6 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   delay(100);
 
   digitalWrite(_resetnPin, HIGH);
-  // delay(50);
 
   // Wait for serial, needed if using with SerialHost (host cdc)
   while (!_serial) {
@@ -187,16 +201,18 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   bool need_stub = false;
 
   //------------- Chip Detect -------------//
-  uint32_t regvalue;
-  if (!read_reg(CHIP_DETECT_MAGIC_REG_ADDR, &regvalue)) {
+  uint32_t chip_detect = read_chip_detect();
+  if (!chip_detect) {
     return 0;
   }
 
-  switch (regvalue) {
+  const esp32_stub_loader_t *stub = NULL;
+  switch (chip_detect) {
   case CHIP_DETECT_MAGIC_ESP32:
     // newer module such as esp32 pico need stub to upload
     // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false
     need_stub = true;
+    stub = &stub_esp32;
     _supports_encrypted_flash = false;
     Serial.println("Found ESP32");
     break;
@@ -221,11 +237,11 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
 #endif
 
   if (need_stub) {
-    VERIFY(uploadStub());
+    VERIFY(uploadStub(stub));
     VERIFY(syncStub(3000));
   }
 
-  if (baudrate != 115200) {
+  if (baudrate != ESP_ROM_BAUD) {
     if (!changeBaudrate(baudrate)) {
       Serial.print("Failed to change baudrate");
       return 0;
@@ -278,7 +294,7 @@ int ESP32BootROMClass::changeBaudrate(uint32_t baudrate) {
   uint32_t data[2] = {baudrate, 0};
 
   if (_stub_running) {
-    data[1] = 115200; // we only changed from 115200 to higher baud
+    data[1] = ESP_ROM_BAUD; // we only changed from 115200 to higher baud
   }
 
   command(ESP_CHANGE_BAUDRATE, data, sizeof(data));
@@ -299,6 +315,9 @@ uint32_t ESP32BootROMClass::getFlashWriteSize(void) {
   return _stub_running ? FLASH_WRITE_SIZE_STUB : FLASH_WRITE_SIZE_NOSTUB;
 }
 
+//--------------------------------------------------------------------+
+// Uncompressed Flashing
+//--------------------------------------------------------------------+
 int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
                                   uint32_t chunkSize) {
 
@@ -332,6 +351,53 @@ int ESP32BootROMClass::endFlash(uint32_t reboot) {
   command(ESP_FLASH_END, data, sizeof(data));
 
   return (response(ESP_FLASH_END, 3000) == 0);
+}
+
+//--------------------------------------------------------------------+
+// Compressed (Deflated) Flashing
+//--------------------------------------------------------------------+
+
+bool ESP32BootROMClass::beginFlashDefl(uint32_t offset, uint32_t size,
+                                       uint32_t zip_size) {
+  const uint32_t block_size = getFlashWriteSize();
+  uint32_t data[5] = {0, div_ceil(zip_size, block_size), block_size, offset, 0};
+
+  if (_stub_running) {
+    // stub expects number of bytes here, manages erasing internally
+    data[0] = size;
+  } else {
+    // ROM expects rounded up to erase block size
+    data[0] = div_ceil(size, block_size) * block_size;
+  }
+
+  uint16_t const len = (_supports_encrypted_flash && !_stub_running) ? 20 : 16;
+
+  command(ESP_FLASH_DEFL_BEGIN, data, len);
+
+  _flashSequenceNumber = 0;
+
+  return (response(ESP_FLASH_DEFL_BEGIN, 3000) == 0);
+}
+
+bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
+  uint32_t header[4];
+
+  header[0] = len;
+  header[1] = _flashSequenceNumber++;
+  header[2] = 0;
+  header[3] = 0;
+
+  command(ESP_FLASH_DEFL_DATA, header, sizeof(header), data, len);
+
+  return (response(ESP_FLASH_DEFL_DATA, 3000) == 0);
+}
+
+bool ESP32BootROMClass::endFlashDefl(uint32_t reboot) {
+  const uint32_t data[1] = {reboot};
+
+  command(ESP_FLASH_DEFL_END, data, sizeof(data));
+
+  return (response(ESP_FLASH_DEFL_END, 3000) == 0);
 }
 
 bool ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
@@ -466,7 +532,7 @@ bool ESP32BootROMClass::syncStub(uint32_t timeout_ms) {
   }
 }
 
-bool ESP32BootROMClass::uploadStub(void) {
+bool ESP32BootROMClass::uploadStub(const esp32_stub_loader_t *stub) {
   Serial.println("Uploading stub...");
 
   uint32_t remain;
@@ -474,11 +540,10 @@ bool ESP32BootROMClass::uploadStub(void) {
 
   // upload text
   Serial.println("Uploading stub text...");
-  VERIFY(
-      beginMem(stub_esp32_text_start, stub_esp32_text_length, ESP_RAM_BLOCK));
+  VERIFY(beginMem(stub->text_start, stub->text_length, ESP_RAM_BLOCK));
 
-  remain = stub_esp32_text_length;
-  buf = stub_esp32_text;
+  remain = stub->text_length;
+  buf = stub->text;
   while (remain) {
     uint32_t const len = (remain > ESP_RAM_BLOCK) ? ESP_RAM_BLOCK : remain;
     dataMem(buf, len);
@@ -489,11 +554,10 @@ bool ESP32BootROMClass::uploadStub(void) {
 
   // upload data
   Serial.println("Uploading stub data...");
-  VERIFY(
-      beginMem(stub_esp32_data_start, stub_esp32_data_length, ESP_RAM_BLOCK));
+  VERIFY(beginMem(stub->data_start, stub->data_length, ESP_RAM_BLOCK));
 
-  remain = stub_esp32_data_length;
-  buf = stub_esp32_data;
+  remain = stub->data_length;
+  buf = stub->data;
   while (remain) {
     uint32_t const len = (remain > ESP_RAM_BLOCK) ? ESP_RAM_BLOCK : remain;
     dataMem(buf, len);
@@ -504,7 +568,7 @@ bool ESP32BootROMClass::uploadStub(void) {
 
   // run stub
   Serial.println("Running stub...");
-  VERIFY(endMem(stub_esp32_entry));
+  VERIFY(endMem(stub->entry));
 
   _stub_running = true;
 
@@ -520,7 +584,8 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
   uint32_t checksum = 0;
 
   // for FLASH_DATA and MEM_DATA: data is header, data2 is actual payload
-  if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA) {
+  if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA ||
+      opcode == ESP_FLASH_DEFL_DATA) {
     checksum = ESP_CHECKSUM_MAGIC; // seed
 
     for (uint16_t i = 0; i < len2; i++) {
@@ -532,9 +597,9 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
 
   DBG_PRINTF("=> c0 00 %02x %04x ", opcode, total_len);
 
-  _serial->write(0xc0);
-  _serial->write((uint8_t)0x00); // direction
-  _serial->write(opcode);
+  uint8_t const header[3] = {0xc0, 0x00, opcode};
+
+  _serial->write(header, 3);
   _serial->write((uint8_t *)&total_len, 2);
 
   writeEscapedBytes((uint8_t *)&checksum, sizeof(checksum));
@@ -551,13 +616,16 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
 
 // read until we found SLIP (0xC0) byte
 bool ESP32BootROMClass::readSLIP(uint32_t timeout_ms) {
-  uint8_t slip = 0;
-  uint32_t end_ms = millis() + timeout_ms;
-  while ((slip != 0xc0) && (millis() < end_ms)) {
-    readBytes(&slip, 1, end_ms - millis());
-    yield();
+  uint32_t const end_ms = millis() + timeout_ms;
+  while (millis() < end_ms) {
+    if (_serial->available()) {
+      uint8_t ch = (uint8_t)_serial->read();
+      if (ch == 0xc0) {
+        return true;
+      }
+    }
   }
-  return slip == 0xc0;
+  return false;
 }
 
 // Read response bytes from ESP32, return number of received bytes
@@ -608,18 +676,16 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   struct __packed_aligned {
     uint8_t dir; // 0x01 for response
     uint8_t opcode;
-    uint16_t length; // at least 2 (or 4) for status bytes
-    uint32_t
-        reg_value; // Response value used by READ_REG command. Zero otherwise.
+    uint16_t length;    // at least 2 (or 4) for status bytes
+    uint32_t reg_value; // READ_REG response. zero otherwise
   } fixed_resp;
+
   uint8_t status[4] = {0};
   uint8_t const status_len = (_stub_running ? 2 : 4);
 
-#if 1
   uint32_t end_ms = millis() + timeout_ms;
 
   if (!readSLIP(timeout_ms)) {
-    Serial.printf("line %d\r\n", __LINE__);
     return -1;
   }
 
@@ -662,12 +728,8 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
 #if DEBUG
   Serial.printf("<= c0 %02x %02x %04x %08x ", fixed_resp.dir, fixed_resp.opcode,
                 fixed_resp.length, fixed_resp.reg_value);
-  for (int i = 0; i < payload_len; i++) {
-    Serial.printf("%02x ", data[i]);
-  }
-  for (int i = 0; i < status_len; i++) {
-    Serial.printf("%02x ", status[i]);
-  }
+  DBG_PRINT_BUF(data, payload_len);
+  DBG_PRINT_BUF(status, status_len);
   Serial.println("c0");
 #endif
 
@@ -692,93 +754,46 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
                 status[1], mess);
 
   return -1;
-
-#else 0
-  uint8_t data[10 + 256];
-  uint16_t index = 0;
-
-  uint8_t responseLength = 4;
-
-  unsigned long start = millis();
-  while ((millis() - start) < timeout_ms) {
-    if (_serial->available()) {
-      data[index] = _serial->read();
-
-      if (index == 3) {
-        responseLength = data[index];
-      }
-
-      index++;
-    }
-    if (index >= (uint16_t)(10 + responseLength)) {
-      break;
-    }
-  }
-
-#if DEBUG
-  if (index) {
-    Serial.print("<= ");
-    for (int i = 0; i < index; i++) {
-      Serial.printf("%02x ", data[i]);
-    }
-    Serial.println();
-  }
-#endif
-
-  if (index != (uint16_t)(10 + responseLength)) {
-    // Serial.printf("index = %u\r\n", index);
-    return -1;
-  }
-
-  if (data[0] != 0xc0 || data[1] != 0x01 || data[2] != opcode ||
-      data[responseLength + 5] != 0x00 || data[responseLength + 6] != 0x00 ||
-      data[responseLength + 9] != 0xc0) {
-    Serial.printf("responseLength = %u\r\n", responseLength);
-    return -1;
-  }
-
-  if (body) {
-    if (opcode == ESP_READ_REG) {
-      memcpy(body, &data[5], maxlen);
-    } else {
-      memcpy(body, &data[9], responseLength - 4);
-    }
-  }
-
-  return data[responseLength + 5];
-#endif
 }
 
 void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
                                           uint16_t length) {
-  uint16_t written = 0;
-
   // skip flashing data since it is a lot to print
-  bool const print_payload = (length >= 1024) ? false : true;
+  bool const print_payload = (length >= 200) ? false : true;
 
-  while (written < length) {
-    uint8_t b = data[written++];
+  uint16_t last_wr = 0;
+  for (uint16_t i = 0; i < length; i++) {
+    uint8_t b = data[i];
 
-    if (b == 0xdb) {
-      _serial->write(0xdb);
-      _serial->write(0xdd);
+    if (b == 0xdb || b == 0xc0) {
+      // write up to i-1
+      if (last_wr < i) {
+        _serial->write(data + last_wr, i - last_wr);
+
+        if (DEBUG && print_payload) {
+          DBG_PRINT_BUF(data + last_wr, i - last_wr);
+        }
+      }
+
+      uint8_t esc[2] = {0xdb, 0x00};
+      esc[1] = (b == 0xdb) ? 0xdd : 0xdc;
+
+      _serial->write(esc, 2);
+
+      // +1 since we already write current index with escape
+      last_wr = i + 1;
 
       if (DEBUG && print_payload) {
-        DBG_PRINTF("db db ");
+        DBG_PRINTF(esc, 2);
       }
-    } else if (b == 0xc0) {
-      _serial->write(0xdb);
-      _serial->write(0xdc);
+    }
+  }
 
-      if (DEBUG && print_payload) {
-        DBG_PRINTF("db dc ");
-      }
-    } else {
-      _serial->write(b);
-
-      if (DEBUG && print_payload) {
-        DBG_PRINTF("%02x ", b);
-      }
+  // last chunk without escape
+  if (last_wr < length) {
+    _serial->write(data + last_wr, length - last_wr);
+    if (DEBUG && print_payload) {
+      DBG_PRINT_BUF(data + last_wr, length - last_wr);
     }
   }
 }

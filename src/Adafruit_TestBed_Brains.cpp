@@ -98,6 +98,7 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
 
   dap = NULL;
   esp32boot = NULL;
+  _esp32_flash_defl = false;
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
@@ -415,8 +416,104 @@ bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
 }
 
 void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
-  esp32boot->endFlash(reset_esp);
+  if (esp32boot->isRunningStub()) {
+    // skip sending flash_finish to ROM loader here,
+    // as it causes the loader to exit and run user code
+    esp32boot->beginFlash(0, 0, esp32boot->getFlashWriteSize());
+
+    if (_esp32_flash_defl) {
+      esp32boot->endFlashDefl(reset_esp);
+    } else {
+      esp32boot->endFlash(reset_esp);
+    }
+  }
+
   esp32boot->end();
+}
+
+size_t
+Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
+                                                uint32_t addr) {
+  if (!esp32boot) {
+    return 0;
+  }
+
+  // Check if MD5 matches to skip this file
+  uint8_t esp_md5[16];
+  esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
+
+  if (0 == memcmp(zfile->md5, esp_md5, 16)) {
+    LCD_printf(2, "MD5 matched");
+    return zfile->uncompressed_len;
+  }
+
+  // Write Size is different depending on ROM (1K) or Stub (16KB)
+  uint32_t const block_size = esp32boot->getFlashWriteSize();
+
+  Serial.printf("Compressed %u bytes to %u\r\n", zfile->uncompressed_len,
+                zfile->compressed_len);
+
+  if (!esp32boot->beginFlashDefl(addr, zfile->uncompressed_len,
+                                 zfile->compressed_len)) {
+    LCD_printf_error("beginFlash failed!");
+  } else {
+    _esp32_flash_defl = true;
+
+    uint32_t const block_num = div_ceil(zfile->compressed_len, block_size);
+
+    //------------- Flashing  -------------//
+    uint8_t const *data = zfile->data;
+    uint32_t remain = zfile->compressed_len;
+
+    for (uint32_t i = 0; i < block_num; i++) {
+      setLED(HIGH);
+      LCD_printf(1, "Pckt %u/%u", i + 1, block_num);
+
+      uint32_t const wr_count = MIN(block_size, remain);
+
+      // Note: flash deflat does not need padding
+      if (!esp32boot->dataFlashDefl(data, wr_count)) {
+        LCD_printf_error("Failed to flash");
+        break;
+      }
+
+      setLED(LOW);
+
+      data += wr_count;
+      remain -= wr_count;
+    }
+    Serial.println();
+
+    // Stub only writes each block to flash after 'ack'ing the receive,
+    // so do a final dummy operation which will not be 'ack'ed
+    // until the last block has actually been written out to flash
+    if (esp32boot->isRunningStub()) {
+      (void)esp32boot->read_chip_detect();
+    }
+
+    //------------- MD5 verification -------------//
+    esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
+
+    if (0 == memcmp(zfile->md5, esp_md5, 16)) {
+      LCD_printf(2, "MD5 matched");
+    } else {
+      LCD_error(NULL, "MD5 mismatched!!");
+
+      Serial.printf("File: ");
+      for (size_t i = 0; i < 16; i++) {
+        Serial.printf("%02X ", zfile->md5[i]);
+      }
+      Serial.println();
+
+      Serial.printf("ESP : ");
+      for (size_t i = 0; i < 16; i++) {
+        Serial.printf("%02X ", esp_md5[i]);
+      }
+      Serial.println();
+    }
+  }
+
+  return zfile->uncompressed_len;
 }
 
 size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
@@ -425,6 +522,7 @@ size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
     return 0;
   }
 
+  // Write Size is different depending on ROM (1K) or Stub (16KB)
   uint32_t const block_size = esp32boot->getFlashWriteSize();
   uint8_t *buf = (uint8_t *)malloc(block_size);
   if (!buf) {
@@ -474,8 +572,7 @@ size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
     // so do a final dummy operation which will not be 'ack'ed
     // until the last block has actually been written out to flash
     if (esp32boot->isRunningStub()) {
-      while (!esp32boot->read_chip_detect()) {
-      }
+      (void)esp32boot->read_chip_detect();
     }
 
     //------------- MD5 verification -------------//
@@ -671,7 +768,9 @@ void Adafruit_TestBed_Brains::LCD_info(const char *msg1, const char *msg2) {
 void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1,
                                         const char *errmsg2) {
   setColor(0xFF0000);
-  LCD_printf(0, errmsg1);
+  if (errmsg1) {
+    LCD_printf(0, errmsg1);
+  }
   if (errmsg2) {
     LCD_printf(1, errmsg2);
   }

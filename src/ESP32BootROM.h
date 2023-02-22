@@ -18,10 +18,22 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+#ifndef ESP32_BOOTROM_H
+#define ESP32_BOOTROM_H
 
 #include <Arduino.h>
 
 #define ESP32_DEFAULT_TIMEOUT 3000
+
+typedef struct {
+  uint32_t entry;
+  uint32_t text_start;
+  uint32_t text_length;
+  const uint8_t *text;
+  uint32_t data_start;
+  uint32_t data_length;
+  const uint8_t *data;
+} esp32_stub_loader_t;
 
 class ESP32BootROMClass {
 public:
@@ -38,9 +50,16 @@ public:
   bool isRunningStub(void);
   uint32_t getFlashWriteSize(void);
 
+  // uncompressed
   int beginFlash(uint32_t offset, uint32_t size, uint32_t chunkSize);
   int dataFlash(const void *data, uint32_t length);
   int endFlash(uint32_t reboot);
+
+  // compressed
+  bool beginFlashDefl(uint32_t offset, uint32_t size, uint32_t zip_size);
+  bool dataFlashDefl(const void *data, uint32_t len);
+  bool endFlashDefl(uint32_t reboot);
+
   bool md5Flash(uint32_t offset, uint32_t size, uint8_t *result);
 
 private:
@@ -62,7 +81,7 @@ private:
   bool endMem(uint32_t entry);
 
   // only needed for ESP32
-  bool uploadStub(void);
+  bool uploadStub(const esp32_stub_loader_t *stub);
   bool syncStub(uint32_t timeout_ms);
 
 private:
@@ -74,3 +93,5 @@ private:
 
   uint32_t _flashSequenceNumber;
 };
+
+#endif

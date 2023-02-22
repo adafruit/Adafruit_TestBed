@@ -13,6 +13,14 @@
 #include "ESP32BootROM.h"
 #include "MD5Builder.h"
 
+typedef struct {
+  const char *name;
+  const uint8_t *data;
+  const uint32_t compressed_len;
+  const uint32_t uncompressed_len;
+  const uint8_t md5[16];
+} esp32_zipfile_t;
+
 /**************************************************************************/
 /*!
     @brief A helper class for making RP2040 "Tester Brains"
@@ -91,6 +99,9 @@ public:
   // return number of programmed bytes
   size_t esp32_programFlash(const char *fpath, uint32_t addr);
 
+  // program flash with compressed using zipfile struct
+  size_t esp32_programFlashDefl(const esp32_zipfile_t *zfile, uint32_t addr);
+
   //--------------------------------------------------------------------+
   // Public Variables
   //--------------------------------------------------------------------+
@@ -124,6 +135,8 @@ private:
   int _target_rst;
   int _target_swdio;
   int _target_swdclk;
+
+  bool _esp32_flash_defl;
 
   void lcd_write(uint8_t linenum, char buf[17]);
 };
