@@ -256,9 +256,9 @@ bool Adafruit_TestBed_Brains::dap_connect(void) {
           ? (dap->target_device.flash_size / dap->target_device.n_pages)
           : 0;
 
-  Serial.printf("Found Target: %s, ID = %08X\n", dap->target_device.name,
+  Serial.printf("Found Target: %s, ID = %08lX\n", dap->target_device.name,
                 dsu_did);
-  Serial.printf("Flash size: %u, Page Num: %u, Page Size: %u\n",
+  Serial.printf("Flash size: %lu, Page Num: %lu, Page Size: %lu\n",
                 dap->target_device.flash_size, dap->target_device.n_pages,
                 page_size);
 
@@ -384,7 +384,7 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 
   if (target_crc != crc32.get()) {
     LCD_printf("CRC Failed");
-    Serial.printf("CRC mismtached: %08X != %08X\n", crc32.get(), target_crc);
+    Serial.printf("CRC mismtached: %08lX != %08lX\n", crc32.get(), target_crc);
   } else {
     LCD_printf("Done!");
   }
@@ -453,7 +453,7 @@ Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
   // Write Size is different depending on ROM (1K) or Stub (16KB)
   uint32_t const block_size = esp32boot->getFlashWriteSize();
 
-  Serial.printf("Compressed %u bytes to %u\r\n", zfile->uncompressed_len,
+  Serial.printf("Compressed %lu bytes to %lu\r\n", zfile->uncompressed_len,
                 zfile->compressed_len);
 
   if (!esp32boot->beginFlashDefl(addr, zfile->uncompressed_len,
@@ -541,7 +541,7 @@ size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
   uint32_t fsize = fsrc.fileSize();
   uint32_t total_count = 0;
 
-  Serial.printf("fsize = %u, block size = %u\r\n", fsize, block_size);
+  Serial.printf("fsize = %lu, block size = %lu\r\n", fsize, block_size);
 
   if (!esp32boot->beginFlash(addr, fsize, block_size)) {
     LCD_printf_error("beginFlash failed!");
@@ -794,12 +794,11 @@ bool Adafruit_TestBed_Brains::usbh_begin(void) {
     while (!Serial) {
       delay(10); // wait for native usb
     }
-    Serial.printf("Error: CPU Clock = %u, PIO USB require CPU clock must be "
+    Serial.printf("Error: CPU Clock = %lu, PIO USB require CPU clock must be "
                   "multiple of 120 Mhz\r\n",
                   cpu_hz);
     Serial.printf("Change your CPU Clock to either 120 or 240 Mhz in Menu->CPU "
-                  "Speed \r\n",
-                  cpu_hz);
+                  "Speed \r\n");
     while (1) {
       delay(1);
     }

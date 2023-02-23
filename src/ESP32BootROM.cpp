@@ -434,7 +434,7 @@ bool ESP32BootROMClass::read_reg(uint32_t addr, uint32_t *val,
                                  uint32_t timeout_ms) {
   command(ESP_READ_REG, &addr, 4);
 
-  if (0 == response(ESP_READ_REG, timeout_ms, val, 4)) {
+  if (0 == response(ESP_READ_REG, timeout_ms, val)) {
     return true;
   } else {
     return false;
@@ -513,7 +513,6 @@ bool ESP32BootROMClass::syncStub(uint32_t timeout_ms) {
   // read OHAI packet
   uint8_t const ohai[4] = {0x4f, 0x48, 0x41, 0x49};
   uint8_t buf[4];
-  uint8_t count = 0;
 
   Serial.println("Syncing stub...");
 
@@ -551,7 +550,8 @@ bool ESP32BootROMClass::uploadStub(const esp32_stub_loader_t *stub) {
   remain = stub->text_length;
   buf = stub->text;
   while (remain) {
-    uint32_t const len = (remain > ESP_RAM_BLOCK) ? ESP_RAM_BLOCK : remain;
+    uint32_t const len =
+        (remain > ESP_RAM_BLOCK) ? (uint32_t)ESP_RAM_BLOCK : remain;
     dataMem(buf, len);
 
     buf += len;
@@ -565,7 +565,8 @@ bool ESP32BootROMClass::uploadStub(const esp32_stub_loader_t *stub) {
   remain = stub->data_length;
   buf = stub->data;
   while (remain) {
-    uint32_t const len = (remain > ESP_RAM_BLOCK) ? ESP_RAM_BLOCK : remain;
+    uint32_t const len =
+        (remain > ESP_RAM_BLOCK) ? (uint32_t)ESP_RAM_BLOCK : remain;
     dataMem(buf, len);
 
     buf += len;
@@ -671,8 +672,8 @@ uint16_t ESP32BootROMClass::readBytes(void *buf, uint16_t length,
 }
 
 // return response status if success, -1 if failed
-int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
-                                uint16_t maxlen) {
+int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms,
+                                void *body) {
   // Response Packet is composed of
   // - 1B: slip start
   // - 8B: fixed response ( struct below )
