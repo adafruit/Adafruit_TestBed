@@ -24,7 +24,7 @@
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG
 #define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
@@ -405,7 +405,7 @@ bool ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
   command(ESP_SPI_FLASH_MD5, data, sizeof(data));
 
   uint8_t resp[32];
-  VERIFY(0 == response(ESP_SPI_FLASH_MD5, 5000, resp));
+  VERIFY(0 == response(ESP_SPI_FLASH_MD5, 6000, resp));
 
   // Note that the ESP32 ROM loader returns the md5sum as 32 hex encoded ASCII
   // bytes, whereas the stub loader returns the md5sum as 16 raw data bytes of
@@ -652,12 +652,13 @@ uint16_t ESP32BootROMClass::readBytes(void *buf, uint16_t length,
         }
         uint8_t ch2 = (uint8_t)_serial->read();
 
-        if (ch2 == 0xdb) {
+        if (ch2 == 0xdd) {
           ch = 0xdb;
         } else if (ch2 == 0xdc) {
           ch = 0xc0;
         } else {
           // should not reach here, must be an error or uart noise
+          Serial.printf("err %02x ", ch2);
           break;
         }
       }
@@ -706,8 +707,12 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   uint8_t data[payload_len];
 
   if (payload_len) {
-    if (payload_len != readBytes(data, payload_len, end_ms - millis())) {
-      Serial.printf("line %d\r\n", __LINE__);
+    uint16_t rd_len = readBytes(data, payload_len, end_ms - millis());
+    if (payload_len != rd_len) {
+      Serial.printf("line %d: payload_len = %u, rd_len = %u\r\n", __LINE__, payload_len, rd_len);
+      if (rd_len) {
+        DBG_PRINT_BUF(data, rd_len);
+      }
       return -1; // probably timeout
     }
   }
