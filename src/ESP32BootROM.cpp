@@ -709,7 +709,8 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms, void *body,
   if (payload_len) {
     uint16_t rd_len = readBytes(data, payload_len, end_ms - millis());
     if (payload_len != rd_len) {
-      Serial.printf("line %d: payload_len = %u, rd_len = %u\r\n", __LINE__, payload_len, rd_len);
+      Serial.printf("line %d: payload_len = %u, rd_len = %u\r\n", __LINE__,
+                    payload_len, rd_len);
       if (rd_len) {
         DBG_PRINT_BUF(data, rd_len);
       }

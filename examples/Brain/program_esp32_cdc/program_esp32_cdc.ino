@@ -32,7 +32,7 @@ ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
 #define BOARD_DEVKIT_S3    3
 
 // select which bins to flash
-#define BIN_FILES     BOARD_DEVKIT_S3
+#define BIN_FILES     BOARD_FEATHER_S2
 
 #if   BIN_FILES == BOARD_FEATHER_S2
   #include "feather_esp32s2_binaries.h"
