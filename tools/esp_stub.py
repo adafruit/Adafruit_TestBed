@@ -63,7 +63,11 @@ def print_stub(mcu):
     print()
 
 
+# print list of stubs first
+for k in stub.keys():
+    print("// const esp32_stub_loader_t stub_%s" % k)
+print()
+
 # print stubs
-print_stub('esp32')
-print_stub('esp32s2')
-#print_stub('esp32s3')
+for k in stub.keys():
+    print_stub(k)

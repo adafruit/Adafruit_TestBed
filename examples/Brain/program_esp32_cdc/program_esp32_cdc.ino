@@ -25,86 +25,72 @@ Adafruit_USBH_CDC  SerialHost;
 // Defined an boot rom object that use UART Serial1
 ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
 
-// Bin files on SDCard to program
-// These files can be found in raspi-tester (or compiled from Arduino sketch)
-#define BIN_FEATHER_S2   0
-#define BIN_FEATHER_S3   1
-#define BIN_DEVKIT_S2    2
-#define BIN_DEVKIT_S3    3
+// Bin files header to program
+#define BOARD_FEATHER_S2   0
+#define BOARD_FEATHER_S3   1
+#define BOARD_DEVKIT_S2    2
+#define BOARD_DEVKIT_S3    3
 
-#define BIN_FILES     BIN_DEVKIT_S3 // select which bins to flash
+// select which bins to flash
+#define BIN_FILES     BOARD_DEVKIT_S3
+
+#if   BIN_FILES == BOARD_FEATHER_S2
+  #include "feather_esp32s2_binaries.h"
+#elif BIN_FILES == BOARD_FEATHER_S3
+  #include "feather_esp32s3_binaries.h"
+#elif BIN_FILES == BOARD_DEVKIT_S2
+  #include "esp32s2_devkit_binaries.h"
+#elif BIN_FILES == BOARD_DEVKIT_S3
+  #include "esp32s3_devkit_binaries.h"
+#endif
 
 struct {
   uint32_t addr;
-  const char* fpath;
-} bin_files [] =
+  esp32_zipfile_t const * zfile;
+} bin_list [] =
 {
-#if BIN_FILES == BIN_FEATHER_S2
-  { 0x1000  , "esp32s2/PID5000/esp32s2_feather_test.ino.bootloader.bin" },
-  { 0x8000  , "esp32s2/PID5000/esp32s2_feather_test.ino.partitions.bin" },
-  { 0xe000  , "esp32s2/PID5000/boot_app0.bin"                           },
-  { 0x10000 , "esp32s2/PID5000/esp32s2_feather_test.ino.bin"            },
-  { 0x2d0000, "esp32s2/PID5000/tinyuf2.bin"                             },
-#endif
+#if BIN_FILES == BOARD_FEATHER_S2
+  { 0x1000  ,  &esp32s2_feather_test_ino_bootloader },
+  { 0x8000  ,  &esp32s2_feather_test_ino_partitions },
+  { 0xe000  ,  &boot_app0                           },
+  { 0x10000 ,  &esp32s2_feather_test_ino            },
+  { 0x2d0000,  &tinyuf2                             },
 
-#if BIN_FILES == BIN_DEVKIT_S2
-  { 0x1000  , "esp32s2/devkit/Blink.ino.bootloader.bin" },
-  { 0x8000  , "esp32s2/devkit/Blink.ino.partitions.bin" },
-  { 0xe000  , "esp32s2/devkit/boot_app0.bin"           },
-  { 0x10000 , "esp32s2/devkit/Blink.ino.bin"            },
-#endif
+#elif BIN_FILES == BOARD_FEATHER_S3
+  { 0x0000  , &esp32s3_feather_test_ino_bootloader },
+  { 0x8000  , &esp32s3_feather_test_ino_partitions },
+  { 0xe000  , &boot_app0                           },
+  { 0x10000 , &esp32s3_feather_test_ino            },
+  { 0x2d0000, &tinyuf2                             },
 
-#if BIN_FILES == BIN_FEATHER_S3
-  { 0x0000  , "esp32s3/PID5477/esp32s3_feather_test.ino.bootloader.bin" },
-  { 0x8000  , "esp32s3/PID5477/esp32s3_feather_test.ino.partitions.bin" },
-  { 0xe000  , "esp32s3/PID5477/boot_app0.bin"                           },
-  { 0x10000 , "esp32s3/PID5477/esp32s3_feather_test.ino.bin"            },
-  { 0x2d0000, "esp32s3/PID5477/tinyuf2.bin"                             },
-#endif
+#elif BIN_FILES == BOARD_DEVKIT_S2
+  { 0x1000  , &Blink_ino_bootloader },
+  { 0x8000  , &Blink_ino_partitions },
+  { 0xe000  , &boot_app0            },
+  { 0x10000 , &Blink_ino            },
 
-#if BIN_FILES == BIN_DEVKIT_S3
-  { 0x0000  , "esp32s3/devkit/Blink.ino.bootloader.bin" },
-  { 0x8000  , "esp32s3/devkit/Blink.ino.partitions.bin" },
-  { 0xe000  , "esp32s3/devkit/boot_app0.bin"           },
-  { 0x10000 , "esp32s3/devkit/Blink.ino.bin"            },
+#elif BIN_FILES == BOARD_DEVKIT_S3
+  { 0x0000  , &Blink_ino_bootloader },
+  { 0x8000  , &Blink_ino_partitions },
+  { 0xe000  , &boot_app0            },
+  { 0x10000 , &Blink_ino            },
 #endif
 };
 
 enum {
-  BIN_FILES_COUNT = sizeof(bin_files)/sizeof(bin_files[0])
+  BIN_LIST_COUNT = sizeof(bin_list)/sizeof(bin_list[0])
 };
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
 //--------------------------------------------------------------------+
 
-void prepare_sd(void) {
-  if (!Brain.SD_detected()) {
-    Brain.LCD_printf(0, "No SD Card");
-    while ( !Brain.SD_detected() ) delay(10);
-  }
-
-  if ( !Brain.SD_begin(SD_SCK_MHZ(16)) ) {
-    Brain.LCD_printf(0, "SD init failed");
-    while(1) delay(10);
-  }
-
-  Brain.LCD_printf(0, "SD mounted");
-
-  // Print out file on SD if Serial is connected
-  if (Serial) {
-    Serial.println();
-    Serial.println("SD Contents:");
-    Serial.printf("Card size = %0.1f GB\n", 0.000000512 * Brain.SD.card()->sectorCount());
-    Brain.SD.ls(LS_R | LS_DATE | LS_SIZE);
-  }
-}
-
 void print_speed(size_t count, uint32_t ms) {
-  Brain.LCD_printf(0, "%.01fKB %.01fs", count/1000.0F, ms / 1000.0F);
-
-  Serial.printf("Completed %u bytes in %.02f seconds.\r\n", count, ms / 1000.0F);
-  Serial.printf("Speed : %.02f KB/s\r\n", (count / 1000.0F) / (ms / 1000.0F));
+  float count_k = count / 1000.0F;
+  float sec = ms / 1000.0F;
+  float speed = count_k / sec;
+  Brain.LCD_printf(0, "%.01fKB %.01fs", count_k, sec);
+  Brain.LCD_printf(1, "Spd: %.01f KB/s", speed);
 }
 
 void setup() {
@@ -115,9 +101,6 @@ void setup() {
   // sync: wait for Brain.begin() called in core1 before accessing SD or other peripherals
   while (!Brain.inited()) delay(10);
 
-  // prepare SD Card
-  prepare_sd();
-
   while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
     delay(100);
   }
@@ -125,10 +108,9 @@ void setup() {
   // Writing bin files
   size_t total_bytes = 0;
   uint32_t ms = millis();
-  for(size_t i=0; i<BIN_FILES_COUNT; i++) {
+  for(size_t i=0; i<BIN_LIST_COUNT; i++) {
     Brain.LCD_printf("Flashing file %u", i);
-    Serial.printf("filename = %s\r\n", bin_files[i].fpath);
-    size_t wr_count = Brain.esp32_programFlash(bin_files[i].fpath, bin_files[i].addr);
+    size_t wr_count = Brain.esp32_programFlashDefl(bin_list[i].zfile, bin_list[i].addr);
     total_bytes += wr_count;
     if (!wr_count) {
       Brain.LCD_printf_error("Failed to flash");
@@ -136,7 +118,7 @@ void setup() {
   }
   print_speed(total_bytes, millis() - ms);
 
-  Brain.esp32_end(false);
+  Brain.esp32_end();
 
   // reset ESP32 to run new firmware
   Brain.targetReset();

@@ -24,7 +24,7 @@
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG
 #define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
@@ -207,7 +207,6 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   const esp32_stub_loader_t *stub = NULL;
   switch (chip_detect) {
   case CHIP_DETECT_MAGIC_ESP32:
-    // newer module such as esp32 pico need stub to upload
     // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false
     stub = &stub_esp32;
     _supports_encrypted_flash = false;
@@ -219,6 +218,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
     break;
 
   case CHIP_DETECT_MAGIC_ESP32S3:
+    stub = &stub_esp32s3;
     Serial.println("Found ESP32-S3");
     break;
 
