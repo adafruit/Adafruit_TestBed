@@ -69,8 +69,7 @@ private:
 
   void command(uint8_t opcode, const void *data, uint16_t length,
                const void *data2 = NULL, uint16_t len2 = 0);
-  int response(uint8_t opcode, uint32_t timeout_ms, void *body = NULL,
-               uint16_t maxlen = 4);
+  int response(uint8_t opcode, uint32_t timeout_ms, void *body = NULL);
 
   uint16_t readBytes(void *buf, uint16_t length, uint32_t timeout_ms);
   bool readSLIP(uint32_t timeout_ms);
