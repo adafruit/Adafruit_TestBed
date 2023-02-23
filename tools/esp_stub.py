@@ -27,29 +27,27 @@ stub = {
     }
 }
 
+
 def print_array(payload):
-    i = 0;
-    for x in payload:
-        if i == 0:
-            print("  ", end='')
-        print("0x%02x, " % x, end="")
-        i += 1
-        if i == 16:
-            i = 0
-            print("")
-    print()        
-    print("};");
-    print()
+    while len(payload) > 0:
+        print('    ' + ', '.join('0x{:02x}'.format(x) for x in payload[0:16]) + ',')
+        payload = payload[16:]
 
 
 def print_stub(mcu):
     data = base64.b64decode(stub[mcu]["data"])
     text = base64.b64decode(stub[mcu]["text"])
+    
+    print("//------------- {} -------------//".format(mcu))
     print ("const uint8_t _stub_%s_data[%d] = {" % (mcu, len(data)))
     print_array(data)
+    print("};");
+    print()
 
     print ("const uint8_t _stub_%s_text[%d] = {" % (mcu, len(text)))
     print_array(text)
+    print("};");
+    print()
 
     print("const esp32_stub_loader_t stub_%s = {" % mcu)
     print("  .entry = 0x%08x," % stub[mcu]["entry"])
@@ -62,9 +60,10 @@ def print_stub(mcu):
     print("  .data_length = %d," % len(data))
     print("  .data = _stub_%s_data," % mcu)
     print("};")
+    print()
 
 
 # print stubs
 print_stub('esp32')
-#print_stub('esp32s2')
+print_stub('esp32s2')
 #print_stub('esp32s3')

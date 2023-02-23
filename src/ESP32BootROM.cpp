@@ -198,8 +198,6 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
 
   Serial.println("Synced!");
 
-  bool need_stub = false;
-
   //------------- Chip Detect -------------//
   uint32_t chip_detect = read_chip_detect();
   if (!chip_detect) {
@@ -211,12 +209,12 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
   case CHIP_DETECT_MAGIC_ESP32:
     // newer module such as esp32 pico need stub to upload
     // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false
-    need_stub = true;
     stub = &stub_esp32;
     _supports_encrypted_flash = false;
     Serial.println("Found ESP32");
     break;
   case CHIP_DETECT_MAGIC_ESP32S2:
+    stub = &stub_esp32s2;
     Serial.println("Found ESP32-S2");
     break;
 
@@ -236,7 +234,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 #endif
 
-  if (need_stub) {
+  if (stub) {
     VERIFY(uploadStub(stub));
     VERIFY(syncStub(3000));
   }
@@ -252,8 +250,8 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
     _serial->begin(baudrate);
   }
 
-  // usse default spi connection if no stub
-  if (!need_stub) {
+  // use default spi connection if no stub
+  if (!stub) {
     while (!spiAttach()) {
       Serial.println("Failed to attach SPI");
       delay(100);
@@ -428,6 +426,10 @@ bool ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
   return true;
 }
 
+//--------------------------------------------------------------------+
+// Read REG
+//--------------------------------------------------------------------+
+
 bool ESP32BootROMClass::read_reg(uint32_t addr, uint32_t *val,
                                  uint32_t timeout_ms) {
   command(ESP_READ_REG, &addr, 4);
@@ -469,6 +471,10 @@ bool ESP32BootROMClass::read_MAC(uint8_t mac[6]) {
   memcpy(mac, tmp_mac.bytes + 2, 6);
   return true;
 }
+
+//--------------------------------------------------------------------+
+// Stub
+//--------------------------------------------------------------------+
 
 bool ESP32BootROMClass::beginMem(uint32_t offset, uint32_t size,
                                  uint32_t chunkSize) {
@@ -784,7 +790,7 @@ void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
       last_wr = i + 1;
 
       if (DEBUG && print_payload) {
-        DBG_PRINTF(esc, 2);
+        DBG_PRINT_BUF(esc, 2);
       }
     }
   }

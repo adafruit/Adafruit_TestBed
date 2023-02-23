@@ -19,7 +19,7 @@ else:
 
 def print_carray(f, payload):
     while len(payload) > 0:
-        f.write('\n    ');
+        f.write('\n    ')
         f.write(', '.join('0x{:02x}'.format(x) for x in payload[0:16]))
         f.write(',')
         payload = payload[16:]
