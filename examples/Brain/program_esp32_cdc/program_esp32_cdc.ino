@@ -26,50 +26,60 @@ Adafruit_USBH_CDC  SerialHost;
 ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
 
 // Bin files header to program
-#define BOARD_FEATHER_S2   0
-#define BOARD_FEATHER_S3   1
-#define BOARD_DEVKIT_S2    2
-#define BOARD_DEVKIT_S3    3
+#define BIN_FEATHER_S2   0
+#define BIN_FEATHER_S3   1
+#define BIN_METRO_S2     2
+#define BIN_DEVKIT_S2    10
+#define BIN_DEVKIT_S3    11
 
 // select which bins to flash
-#define BIN_FILES     BOARD_FEATHER_S2
+#define BIN_FILES     BIN_METRO_S2
 
-#if   BIN_FILES == BOARD_FEATHER_S2
+#if   BIN_FILES == BIN_FEATHER_S2
   #include "feather_esp32s2_binaries.h"
-#elif BIN_FILES == BOARD_FEATHER_S3
+#elif BIN_FILES == BIN_METRO_S2
+  #include "metro_esp32s2_binaries.h"
+#elif BIN_FILES == BIN_FEATHER_S3
   #include "feather_esp32s3_binaries.h"
-#elif BIN_FILES == BOARD_DEVKIT_S2
+#elif BIN_FILES == BIN_DEVKIT_S2
   #include "esp32s2_devkit_binaries.h"
-#elif BIN_FILES == BOARD_DEVKIT_S3
+#elif BIN_FILES == BIN_DEVKIT_S3
   #include "esp32s3_devkit_binaries.h"
 #endif
 
 struct {
   uint32_t addr;
   esp32_zipfile_t const * zfile;
-} bin_list [] =
+} bin_files [] =
 {
-#if BIN_FILES == BOARD_FEATHER_S2
+#if BIN_FILES == BIN_FEATHER_S2
   { 0x1000  ,  &esp32s2_feather_test_ino_bootloader },
   { 0x8000  ,  &esp32s2_feather_test_ino_partitions },
   { 0xe000  ,  &boot_app0                           },
   { 0x10000 ,  &esp32s2_feather_test_ino            },
   { 0x2d0000,  &tinyuf2                             },
 
-#elif BIN_FILES == BOARD_FEATHER_S3
+#elif BIN_FILES == BIN_METRO_S2
+  { 0x1000  ,  &selftest_ino_bootloader },
+  { 0x8000  ,  &selftest_ino_partitions },
+  { 0xe000  ,  &boot_app0               },
+  { 0x10000 ,  &selftest_ino            },
+  { 0x2d0000,  &tinyuf2                 },
+
+#elif BIN_FILES == BIN_FEATHER_S3
   { 0x0000  , &esp32s3_feather_test_ino_bootloader },
   { 0x8000  , &esp32s3_feather_test_ino_partitions },
   { 0xe000  , &boot_app0                           },
   { 0x10000 , &esp32s3_feather_test_ino            },
   { 0x2d0000, &tinyuf2                             },
 
-#elif BIN_FILES == BOARD_DEVKIT_S2
+#elif BIN_FILES == BIN_DEVKIT_S2
   { 0x1000  , &Blink_ino_bootloader },
   { 0x8000  , &Blink_ino_partitions },
   { 0xe000  , &boot_app0            },
   { 0x10000 , &Blink_ino            },
 
-#elif BIN_FILES == BOARD_DEVKIT_S3
+#elif BIN_FILES == BIN_DEVKIT_S3
   { 0x0000  , &Blink_ino_bootloader },
   { 0x8000  , &Blink_ino_partitions },
   { 0xe000  , &boot_app0            },
@@ -78,7 +88,7 @@ struct {
 };
 
 enum {
-  BIN_LIST_COUNT = sizeof(bin_list)/sizeof(bin_list[0])
+  BIN_FILES_COUNT = sizeof(bin_files)/sizeof(bin_files[0])
 };
 
 //--------------------------------------------------------------------+
@@ -96,7 +106,7 @@ void print_speed(size_t count, uint32_t ms) {
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
-  Serial.println("Tester Brains: Programming ESP32 with UART!");
+  Serial.println("Tester Brains: Programming ESP32 with SerialHost!");
 
   // sync: wait for Brain.begin() called in core1 before accessing SD or other peripherals
   while (!Brain.inited()) delay(10);
@@ -108,9 +118,10 @@ void setup() {
   // Writing bin files
   size_t total_bytes = 0;
   uint32_t ms = millis();
-  for(size_t i=0; i<BIN_LIST_COUNT; i++) {
+  for(size_t i=0; i<BIN_FILES_COUNT; i++) {
     Brain.LCD_printf("Flashing file %u", i);
-    size_t wr_count = Brain.esp32_programFlashDefl(bin_list[i].zfile, bin_list[i].addr);
+    Serial.printf("File %s\r\n", bin_files[i].zfile->name);
+    size_t wr_count = Brain.esp32_programFlashDefl(bin_files[i].zfile, bin_files[i].addr);
     total_bytes += wr_count;
     if (!wr_count) {
       Brain.LCD_printf_error("Failed to flash");
