@@ -381,15 +381,21 @@ bool ESP32BootROMClass::beginFlashDefl(uint32_t offset, uint32_t size,
 
 bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
   uint32_t header[4];
-
+  uint32_t stamp = millis();
   header[0] = len;
   header[1] = _flashSequenceNumber++;
   header[2] = 0;
   header[3] = 0;
 
+  DBG_PRINTF("FLASH_DEFL_DATA...");
   command(ESP_FLASH_DEFL_DATA, header, sizeof(header), data, len);
+  DBG_PRINTF(millis()-stamp);
 
-  return (response(ESP_FLASH_DEFL_DATA, 3000) == 0);
+  bool b = response(ESP_FLASH_DEFL_DATA, 3000);
+  DBG_PRINTF(":");
+  DBG_PRINTF(millis()-stamp);
+  DBG_PRINTF("\t");
+  return (b == 0);
 }
 
 bool ESP32BootROMClass::endFlashDefl(uint32_t reboot) {
