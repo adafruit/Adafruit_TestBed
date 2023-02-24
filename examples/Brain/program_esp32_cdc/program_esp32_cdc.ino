@@ -13,10 +13,14 @@
 
 #include "Adafruit_TestBed_Brains.h"
 
+// Change BIN_FILES in esp_binaries.h header to select which binaries to flash
+// bin_files[] is defined accordingly
+#include "esp_binaries.h"
+
 #define ESP32_RESET     27
 #define ESP32_IO0       28
 
-//#define ESP32_BAUDRATE  921600
+// Using CDC baudrate does not really matter at all
 #define ESP32_BAUDRATE  115200
 
 // CDC Host object
@@ -24,72 +28,6 @@ Adafruit_USBH_CDC  SerialHost;
 
 // Defined an boot rom object that use UART Serial1
 ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
-
-// Bin files header to program
-#define BIN_FEATHER_S2   0
-#define BIN_FEATHER_S3   1
-#define BIN_METRO_S2     2
-#define BIN_DEVKIT_S2    10
-#define BIN_DEVKIT_S3    11
-
-// select which bins to flash
-#define BIN_FILES     BIN_METRO_S2
-
-#if   BIN_FILES == BIN_FEATHER_S2
-  #include "feather_esp32s2_binaries.h"
-#elif BIN_FILES == BIN_METRO_S2
-  #include "metro_esp32s2_binaries.h"
-#elif BIN_FILES == BIN_FEATHER_S3
-  #include "feather_esp32s3_binaries.h"
-#elif BIN_FILES == BIN_DEVKIT_S2
-  #include "esp32s2_devkit_binaries.h"
-#elif BIN_FILES == BIN_DEVKIT_S3
-  #include "esp32s3_devkit_binaries.h"
-#endif
-
-struct {
-  uint32_t addr;
-  esp32_zipfile_t const * zfile;
-} bin_files [] =
-{
-#if BIN_FILES == BIN_FEATHER_S2
-  { 0x1000  ,  &esp32s2_feather_test_ino_bootloader },
-  { 0x8000  ,  &esp32s2_feather_test_ino_partitions },
-  { 0xe000  ,  &boot_app0                           },
-  { 0x10000 ,  &esp32s2_feather_test_ino            },
-  { 0x2d0000,  &tinyuf2                             },
-
-#elif BIN_FILES == BIN_METRO_S2
-  { 0x1000  ,  &selftest_ino_bootloader },
-  { 0x8000  ,  &selftest_ino_partitions },
-  { 0xe000  ,  &boot_app0               },
-  { 0x10000 ,  &selftest_ino            },
-  { 0x2d0000,  &tinyuf2                 },
-
-#elif BIN_FILES == BIN_FEATHER_S3
-  { 0x0000  , &esp32s3_feather_test_ino_bootloader },
-  { 0x8000  , &esp32s3_feather_test_ino_partitions },
-  { 0xe000  , &boot_app0                           },
-  { 0x10000 , &esp32s3_feather_test_ino            },
-  { 0x2d0000, &tinyuf2                             },
-
-#elif BIN_FILES == BIN_DEVKIT_S2
-  { 0x1000  , &Blink_ino_bootloader },
-  { 0x8000  , &Blink_ino_partitions },
-  { 0xe000  , &boot_app0            },
-  { 0x10000 , &Blink_ino            },
-
-#elif BIN_FILES == BIN_DEVKIT_S3
-  { 0x0000  , &Blink_ino_bootloader },
-  { 0x8000  , &Blink_ino_partitions },
-  { 0xe000  , &boot_app0            },
-  { 0x10000 , &Blink_ino            },
-#endif
-};
-
-enum {
-  BIN_FILES_COUNT = sizeof(bin_files)/sizeof(bin_files[0])
-};
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
