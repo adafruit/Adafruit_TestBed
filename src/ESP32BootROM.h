@@ -79,9 +79,10 @@ private:
   bool dataMem(const void *data, uint32_t length);
   bool endMem(uint32_t entry);
 
-  // only needed for ESP32
   bool uploadStub(const esp32_stub_loader_t *stub);
   bool syncStub(uint32_t timeout_ms);
+
+  void resetBootloader(void);
 
 private:
   HardwareSerial *_serial;

@@ -166,25 +166,32 @@ ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
   _flashSequenceNumber = 0;
 }
 
+void ESP32BootROMClass::resetBootloader(void) {
+  // Reset Low ( ESP32 in reset)
+  digitalWrite(_gpio0Pin, LOW);
+  digitalWrite(_resetnPin, LOW);
+  delay(100);
+
+  // IO0 Low, Reset HIGH (ESP32 out of reset)
+  digitalWrite(_resetnPin, HIGH);
+
+  // Wait for serial, needed if using with SerialHost
+  while (!_serial) {
+    delay(10);
+  }
+  delay(50); // additional delay for SerialHost connected
+
+  // IO0 high: done
+  digitalWrite(_gpio0Pin, HIGH);
+}
+
 int ESP32BootROMClass::begin(unsigned long baudrate) {
   _serial->begin(ESP_ROM_BAUD);
 
   pinMode(_gpio0Pin, OUTPUT);
   pinMode(_resetnPin, OUTPUT);
 
-  digitalWrite(_gpio0Pin, LOW);
-  digitalWrite(_resetnPin, LOW);
-  delay(100);
-
-  digitalWrite(_resetnPin, HIGH);
-
-  // Wait for serial, needed if using with SerialHost (host cdc)
-  while (!_serial) {
-    delay(10);
-  }
-
-  delay(50); // additional delay for SerialHost connected
-  digitalWrite(_gpio0Pin, HIGH);
+  resetBootloader();
 
   int synced = 0;
 
