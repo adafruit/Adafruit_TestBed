@@ -392,14 +392,12 @@ bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
   header[2] = 0;
   header[3] = 0;
 
-  DBG_PRINTF("FLASH_DEFL_DATA...");
   command(ESP_FLASH_DEFL_DATA, header, sizeof(header), data, len);
-  DBG_PRINTF(millis()-stamp);
+  DBG_PRINTF("FLASH_DEFL_DATA...%d", millis()-stamp);
 
   bool b = response(ESP_FLASH_DEFL_DATA, 3000);
-  DBG_PRINTF(":");
-  DBG_PRINTF(millis()-stamp);
-  DBG_PRINTF("\t");
+  DBG_PRINTF(": %d\t", millis()-stamp);
+
   return (b == 0);
 }
 

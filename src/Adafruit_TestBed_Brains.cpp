@@ -36,6 +36,8 @@
 
 Adafruit_TestBed_Brains Brain;
 
+volatile bool LCD_semaphore = false;
+
 // Simple and low code CRC calculation (copied from PicoOTA)
 class BrainCRC32 {
 public:
@@ -443,7 +445,11 @@ Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
 
 #if 1 // change to 0 to skip pre-flash md5 check for testing
   esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
-
+  Serial.printf("Flash MD5: ");
+  for (size_t i = 0; i < 16; i++) {
+      Serial.printf("%02X ", esp_md5[i]);
+  }
+  Serial.println();
   if (0 == memcmp(zfile->md5, esp_md5, 16)) {
     LCD_printf(2, "MD5 matched");
     return zfile->uncompressed_len;
@@ -722,6 +728,9 @@ void Adafruit_TestBed_Brains::setColor(uint32_t color) {
 }
 
 void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {
+  // wait for semaphore to release
+  while (LCD_semaphore) yield();
+  LCD_semaphore = true;
   // fill the rest with spaces
   memset(linebuf + strlen(linebuf), ' ', 16 - strlen(linebuf));
   linebuf[16] = 0;
@@ -733,6 +742,7 @@ void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {
   Serial.flush();
 
   _lcd_line = 1 - linenum;
+  LCD_semaphore = false;
 }
 
 #define _LCD_PRINTF(_line, _format)                                            \
