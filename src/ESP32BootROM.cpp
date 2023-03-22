@@ -64,8 +64,8 @@ enum {
   ESP_WRITE_REG = 0x09,
   ESP_READ_REG = 0x0A,
 
-  // Some comands supported by ESP32 and later chips ROM bootloader (or -8266 w/
-  // stub)
+  // Some commands supported by ESP32 and later chips ROM bootloader (or -8266
+  // with stub)
   ESP_SPI_SET_PARAMS = 0x0B,
   ESP_SPI_ATTACH = 0x0D,
   ESP_READ_FLASH_SLOW = 0x0E, // ROM only, much slower than the stub flash read
@@ -387,10 +387,10 @@ bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
   header[3] = 0;
 
   command(ESP_FLASH_DEFL_DATA, header, sizeof(header), data, len);
-  DBG_PRINTF("FLASH_DEFL_DATA...%d", millis()-stamp);
+  DBG_PRINTF("FLASH_DEFL_DATA...%d", millis() - stamp);
 
   bool b = response(ESP_FLASH_DEFL_DATA, 3000);
-  DBG_PRINTF(": %d\t", millis()-stamp);
+  DBG_PRINTF(": %d\t", millis() - stamp);
 
   return (b == 0);
 }

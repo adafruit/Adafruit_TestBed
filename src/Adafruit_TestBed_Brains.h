@@ -137,6 +137,7 @@ private:
   int _target_swdclk;
 
   bool _esp32_flash_defl;
+  uint32_t _esp32_chip_detect;
 
   void lcd_write(uint8_t linenum, char buf[17]);
 };
