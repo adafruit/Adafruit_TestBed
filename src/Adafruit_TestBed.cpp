@@ -380,7 +380,7 @@ void Adafruit_TestBed::beep(uint32_t freq, uint32_t duration) {
   if (piezoPin < 0)
     return;
   pinMode(piezoPin, OUTPUT);
-#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_SAM_DUE)
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_METRO_ESP32S2)
   tone(piezoPin, freq, duration);
 #else
   // suppress compiler warns
