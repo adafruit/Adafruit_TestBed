@@ -144,12 +144,6 @@ enum {
   USB_JTAG_SERIAL_PID = 0x1001
 };
 
-enum {
-  CHIP_DETECT_MAGIC_ESP32 = 0x00F01D83,
-  CHIP_DETECT_MAGIC_ESP32S2 = 0x000007C6,
-  CHIP_DETECT_MAGIC_ESP32S3 = 0x9,
-};
-
 static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
   return (v + d - 1) / d;
 }
@@ -185,7 +179,7 @@ void ESP32BootROMClass::resetBootloader(void) {
   digitalWrite(_gpio0Pin, HIGH);
 }
 
-int ESP32BootROMClass::begin(unsigned long baudrate) {
+uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
   _serial->begin(ESP_ROM_BAUD);
 
   pinMode(_gpio0Pin, OUTPUT);
@@ -265,7 +259,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
     }
   }
 
-  return 1;
+  return chip_detect;
 }
 
 void ESP32BootROMClass::end() {
