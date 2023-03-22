@@ -102,6 +102,9 @@ public:
   // program flash with compressed using zipfile struct
   size_t esp32_programFlashDefl(const esp32_zipfile_t *zfile, uint32_t addr);
 
+  bool esp32_s3_inReset(void);
+  void esp32_s3_clearReset(void);
+
   //--------------------------------------------------------------------+
   // Public Variables
   //--------------------------------------------------------------------+
@@ -138,6 +141,7 @@ private:
 
   bool _esp32_flash_defl;
   uint32_t _esp32_chip_detect;
+  bool _esp32s3_in_reset;
 
   void lcd_write(uint8_t linenum, char buf[17]);
 };

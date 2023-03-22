@@ -103,6 +103,7 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
   esp32boot = NULL;
   _esp32_flash_defl = false;
   _esp32_chip_detect = 0;
+  _esp32s3_in_reset = false;
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
@@ -148,12 +149,9 @@ void Adafruit_TestBed_Brains::targetReset(uint32_t reset_ms) {
   // uploading and/or power on. Afterwards USB-OTG will be set up if selected
   // so. However rp2040 USBH is running too fast and can actually retrieve
   // device/configuration descriptor of JTAG before the OTG is fully setup.
-  // Therefore we will suspend CPU1 (running usbh task) for 1 second to give
-  // more time for OTG
+  // Mark this for application usage
   if (_esp32_chip_detect == CHIP_DETECT_MAGIC_ESP32S3) {
-    rp2040.idleOtherCore();
-    delay(500);
-    rp2040.resumeOtherCore();
+    _esp32s3_in_reset = true;
   }
 }
 
@@ -447,6 +445,14 @@ void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
   }
 
   esp32boot->end();
+}
+
+bool Adafruit_TestBed_Brains::esp32_s3_inReset(void) {
+  return _esp32s3_in_reset;
+}
+
+void Adafruit_TestBed_Brains::esp32_s3_clearReset(void) {
+  _esp32s3_in_reset = false;
 }
 
 size_t
