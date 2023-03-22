@@ -75,7 +75,7 @@ void setup() {
   // prepare SD Card
   prepare_sd();
 
-  // wait for USB filesytem is mounted. USB host bit-banging and task is
+  // wait for USB filesystem is mounted. USB host bit-banging and task is
   // processed on core1
   while (!is_usbfs_mounted) delay(10);
 

@@ -64,8 +64,8 @@ enum {
   ESP_WRITE_REG = 0x09,
   ESP_READ_REG = 0x0A,
 
-  // Some comands supported by ESP32 and later chips ROM bootloader (or -8266 w/
-  // stub)
+  // Some commands supported by ESP32 and later chips ROM bootloader (or -8266
+  // with stub)
   ESP_SPI_SET_PARAMS = 0x0B,
   ESP_SPI_ATTACH = 0x0D,
   ESP_READ_FLASH_SLOW = 0x0E, // ROM only, much slower than the stub flash read
@@ -144,12 +144,6 @@ enum {
   USB_JTAG_SERIAL_PID = 0x1001
 };
 
-enum {
-  CHIP_DETECT_MAGIC_ESP32 = 0x00F01D83,
-  CHIP_DETECT_MAGIC_ESP32S2 = 0x000007C6,
-  CHIP_DETECT_MAGIC_ESP32S3 = 0x9,
-};
-
 static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
   return (v + d - 1) / d;
 }
@@ -185,7 +179,7 @@ void ESP32BootROMClass::resetBootloader(void) {
   digitalWrite(_gpio0Pin, HIGH);
 }
 
-int ESP32BootROMClass::begin(unsigned long baudrate) {
+uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
   _serial->begin(ESP_ROM_BAUD);
 
   pinMode(_gpio0Pin, OUTPUT);
@@ -265,7 +259,7 @@ int ESP32BootROMClass::begin(unsigned long baudrate) {
     }
   }
 
-  return 1;
+  return chip_detect;
 }
 
 void ESP32BootROMClass::end() {
@@ -393,10 +387,10 @@ bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
   header[3] = 0;
 
   command(ESP_FLASH_DEFL_DATA, header, sizeof(header), data, len);
-  DBG_PRINTF("FLASH_DEFL_DATA...%d", millis()-stamp);
+  DBG_PRINTF("FLASH_DEFL_DATA...%d", millis() - stamp);
 
   bool b = response(ESP_FLASH_DEFL_DATA, 3000);
-  DBG_PRINTF(": %d\t", millis()-stamp);
+  DBG_PRINTF(": %d\t", millis() - stamp);
 
   return (b == 0);
 }

@@ -37,7 +37,7 @@ def print_array(payload):
 def print_stub(mcu):
     data = base64.b64decode(stub[mcu]["data"])
     text = base64.b64decode(stub[mcu]["text"])
-    
+
     print("//------------- {} -------------//".format(mcu))
     print ("const uint8_t _stub_%s_data[%d] = {" % (mcu, len(data)))
     print_array(data)
