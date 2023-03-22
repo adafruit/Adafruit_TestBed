@@ -99,8 +99,11 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
   _target_swdclk = 3;
 
   dap = NULL;
+
   esp32boot = NULL;
   _esp32_flash_defl = false;
+  _esp32_chip_detect = 0;
+  _esp32s3_in_reset = false;
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
@@ -139,6 +142,17 @@ void Adafruit_TestBed_Brains::targetReset(uint32_t reset_ms) {
   digitalWrite(_target_rst, LOW);
   delay(reset_ms);
   digitalWrite(_target_rst, HIGH);
+
+  // Note: S3 has an USB-OTG errata
+  // https://www.espressif.com/sites/default/files/documentation/esp32-s3_errata_en.pdf
+  // which is walkarounded by idf/arduino-esp32 to always mux JTAG to USB for
+  // uploading and/or power on. Afterwards USB-OTG will be set up if selected
+  // so. However rp2040 USBH is running too fast and can actually retrieve
+  // device/configuration descriptor of JTAG before the OTG is fully setup.
+  // Mark this for application usage
+  if (_esp32_chip_detect == CHIP_DETECT_MAGIC_ESP32S3) {
+    _esp32s3_in_reset = true;
+  }
 }
 
 //--------------------------------------------------------------------+
@@ -406,15 +420,15 @@ bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
   esp32boot = bootrom;
 
   LCD_printf("Syncing ESP32");
-  bool ret = esp32boot->begin(baudrate);
+  _esp32_chip_detect = esp32boot->begin(baudrate);
 
-  if (ret) {
+  if (_esp32_chip_detect) {
     LCD_printf("Synced OK");
+    return true;
   } else {
     LCD_printf_error("Sync failed!");
+    return false;
   }
-
-  return ret;
 }
 
 void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
@@ -433,6 +447,14 @@ void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
   esp32boot->end();
 }
 
+bool Adafruit_TestBed_Brains::esp32_s3_inReset(void) {
+  return _esp32s3_in_reset;
+}
+
+void Adafruit_TestBed_Brains::esp32_s3_clearReset(void) {
+  _esp32s3_in_reset = false;
+}
+
 size_t
 Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
                                                 uint32_t addr) {
@@ -447,7 +469,7 @@ Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
   esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
   Serial.printf("Flash MD5: ");
   for (size_t i = 0; i < 16; i++) {
-      Serial.printf("%02X ", esp_md5[i]);
+    Serial.printf("%02X ", esp_md5[i]);
   }
   Serial.println();
   if (0 == memcmp(zfile->md5, esp_md5, 16)) {
@@ -729,7 +751,8 @@ void Adafruit_TestBed_Brains::setColor(uint32_t color) {
 
 void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {
   // wait for semaphore to release
-  while (LCD_semaphore) yield();
+  while (LCD_semaphore)
+    yield();
   LCD_semaphore = true;
   // fill the rest with spaces
   memset(linebuf + strlen(linebuf), ' ', 16 - strlen(linebuf));

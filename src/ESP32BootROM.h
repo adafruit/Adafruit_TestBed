@@ -25,6 +25,12 @@
 
 #define ESP32_DEFAULT_TIMEOUT 3000
 
+enum {
+  CHIP_DETECT_MAGIC_ESP32 = 0x00F01D83,
+  CHIP_DETECT_MAGIC_ESP32S2 = 0x000007C6,
+  CHIP_DETECT_MAGIC_ESP32S3 = 0x9,
+};
+
 typedef struct {
   uint32_t entry;
   uint32_t text_start;
@@ -39,7 +45,8 @@ class ESP32BootROMClass {
 public:
   ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin);
 
-  int begin(unsigned long baudrate);
+  // return chip detect magic if success, otherwise 0
+  uint32_t begin(unsigned long baudrate);
   void end();
 
   bool read_reg(uint32_t regAddr, uint32_t *regValue,

@@ -54,7 +54,7 @@ void loop(void) {
     Serial.println("I2C 0x63 not found");
   }
   Serial.println("I2C 0x63 found");
-  
+
   Serial.println("Test OK!");
   //TB.beepNblink();
   delay(500);

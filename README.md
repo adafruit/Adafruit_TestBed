@@ -6,7 +6,7 @@ Used internally for making testers, to reduce code replication!
 
 Adafruit invests time and resources providing this open source code, please support Adafruit and open-source hardware by purchasing products from Adafruit!
 
-Written by Limor Fried for Adafruit Industries.  
+Written by Limor Fried for Adafruit Industries.
 BSD license, check license.txt for more information
 All text above must be included in any redistribution
 
