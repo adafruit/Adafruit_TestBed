@@ -13,6 +13,11 @@
 // CDC Host object
 Adafruit_USBH_CDC  SerialHost;
 
+enum {
+  COLOR_NO_DEV = 0x00000ff,
+  COLOR_MOUNTED = 0x00ff00,
+};
+
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
 //--------------------------------------------------------------------+
@@ -57,6 +62,8 @@ void setup1() {
   // Init Brain USB Host
   Brain.usbh_begin();
 
+  Brain.setColor(COLOR_NO_DEV);
+
   // Since we only support 1 CDC interface with Tester (also CFG_TUH_CDC = 1)
   // the index will always be 0 for SerialHost
   // SerialHost.setInterfaceIndex(0);
@@ -89,8 +96,8 @@ void tuh_mount_cb (uint8_t daddr)
   tuh_vid_pid_get(daddr, &vid, &pid);
 
   Serial.printf("Device attached, address = %d\r\n", daddr);
+  Brain.setColor(COLOR_MOUNTED);
   Brain.LCD_printf(0, "USBID %04x:%04x", vid, pid);
-
   Brain.LCD_printf(1, "MS %u HID %u CDC %u", tuh_msc_mounted(daddr), tuh_hid_instance_count(daddr), SerialHost.mounted());
 }
 
@@ -98,9 +105,9 @@ void tuh_mount_cb (uint8_t daddr)
 void tuh_umount_cb(uint8_t daddr)
 {
   Serial.printf("Device removed, address = %d\r\n", daddr);
+  Brain.setColor(COLOR_NO_DEV);
   Brain.LCD_printf(0, "No USB attached");
   Brain.LCD_printf(1, "Plug your device");
-
 }
 
 }
