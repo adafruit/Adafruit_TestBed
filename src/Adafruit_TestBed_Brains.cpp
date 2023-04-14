@@ -672,7 +672,8 @@ bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
 // LCD
 //--------------------------------------------------------------------+
 
-void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(uint32_t color) {
+void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
+    uint32_t color) {
   static uint32_t end_us = 0;
   static uint32_t last_color = 0x123456;
 
