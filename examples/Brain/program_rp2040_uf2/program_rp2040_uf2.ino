@@ -60,11 +60,6 @@ void print_speed(size_t count, uint32_t ms) {
 }
 
 void setup() {
-  // For debugging tinyusb
-  if (CFG_TUSB_DEBUG) {
-    Serial1.begin(115200);
-  }
-
   Serial.begin(115200);
   while (!Serial) delay(10);
   Serial.println("Tester Brains: UF2 copy from SD to USBH FS test!");
@@ -93,6 +88,7 @@ void setup() {
 }
 
 void loop() {
+  Serial.flush();
 }
 
 //--------------------------------------------------------------------+
