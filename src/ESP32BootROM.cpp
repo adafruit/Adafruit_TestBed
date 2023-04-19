@@ -188,7 +188,7 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
 
   resetBootloader();
 
-  int synced = 0;
+  bool synced = false;
 
   for (int retries = 0; retries < 10; retries++) {
     Serial.println("Trying to sync");
@@ -274,7 +274,7 @@ void ESP32BootROMClass::end() {
   //_serial->end();
 }
 
-int ESP32BootROMClass::sync() {
+bool ESP32BootROMClass::sync() {
   const uint8_t data[] = {0x07, 0x07, 0x12, 0x20, 0x55, 0x55, 0x55, 0x55, 0x55,
                           0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
                           0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
@@ -291,7 +291,7 @@ int ESP32BootROMClass::sync() {
   return (results[0] == 0);
 }
 
-int ESP32BootROMClass::changeBaudrate(uint32_t baudrate) {
+bool ESP32BootROMClass::changeBaudrate(uint32_t baudrate) {
   // Two 32-bit words:
   // - new baud rate, and
   // - 0 if we are talking to the ROM loader or the current/old baud rate if we
@@ -302,16 +302,15 @@ int ESP32BootROMClass::changeBaudrate(uint32_t baudrate) {
     data[1] = ESP_ROM_BAUD; // we only changed from 115200 to higher baud
   }
 
-  command(ESP_CHANGE_BAUDRATE, data, sizeof(data));
-  return (response(ESP_CHANGE_BAUDRATE, 3000) == 0);
+  return sendCommandGetResponse(ESP_CHANGE_BAUDRATE, (uint8_t *)data,
+                                sizeof(data), NULL, 0, 3000);
 }
 
-int ESP32BootROMClass::spiAttach() {
+bool ESP32BootROMClass::spiAttach() {
   const uint8_t data[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-  command(ESP_SPI_ATTACH, data, sizeof(data));
-
-  return (response(ESP_SPI_ATTACH, 3000) == 0);
+  return sendCommandGetResponse(ESP_SPI_ATTACH, data, sizeof(data), NULL, 0,
+                                3000);
 }
 
 bool ESP32BootROMClass::isRunningStub(void) { return _stub_running; }
@@ -323,39 +322,32 @@ uint32_t ESP32BootROMClass::getFlashWriteSize(void) {
 //--------------------------------------------------------------------+
 // Uncompressed Flashing
 //--------------------------------------------------------------------+
-int ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
-                                  uint32_t chunkSize) {
+bool ESP32BootROMClass::beginFlash(uint32_t offset, uint32_t size,
+                                   uint32_t chunkSize) {
 
   const uint32_t data[5] = {size, div_ceil(size, chunkSize), chunkSize, offset,
                             0};
   uint16_t const len = (_supports_encrypted_flash && !_stub_running) ? 20 : 16;
 
-  command(ESP_FLASH_BEGIN, data, len);
-
   _flashSequenceNumber = 0;
-
-  return (response(ESP_FLASH_BEGIN, 120000) == 0);
+  return sendCommandGetResponse(ESP_FLASH_BEGIN, data, len, NULL, 0, 120000);
 }
 
-int ESP32BootROMClass::dataFlash(const void *data, uint32_t length) {
+bool ESP32BootROMClass::dataFlash(const void *data, uint32_t length) {
   uint32_t header[4];
-
   header[0] = length;
   header[1] = _flashSequenceNumber++;
   header[2] = 0;
   header[3] = 0;
 
-  command(ESP_FLASH_DATA, header, sizeof(header), data, length);
-
-  return (response(ESP_FLASH_DATA, 3000) == 0);
+  return sendCommandGetResponse(ESP_FLASH_DATA, header, sizeof(header), data,
+                                length, 3000);
 }
 
-int ESP32BootROMClass::endFlash(uint32_t reboot) {
+bool ESP32BootROMClass::endFlash(uint32_t reboot) {
   const uint32_t data[1] = {reboot};
-
-  command(ESP_FLASH_END, data, sizeof(data));
-
-  return (response(ESP_FLASH_END, 3000) == 0);
+  return sendCommandGetResponse(ESP_FLASH_END, data, sizeof(data), NULL, 0,
+                                3000);
 }
 
 //--------------------------------------------------------------------+
@@ -377,11 +369,8 @@ bool ESP32BootROMClass::beginFlashDefl(uint32_t offset, uint32_t size,
 
   uint16_t const len = (_supports_encrypted_flash && !_stub_running) ? 20 : 16;
 
-  command(ESP_FLASH_DEFL_BEGIN, data, len);
-
   _flashSequenceNumber = 0;
-
-  return (response(ESP_FLASH_DEFL_BEGIN, 3000) == 0);
+  return sendCommandGetResponse(ESP_FLASH_DEFL_BEGIN, data, len, NULL, 0, 3000);
 }
 
 bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
@@ -392,31 +381,24 @@ bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
   header[2] = 0;
   header[3] = 0;
 
-  command(ESP_FLASH_DEFL_DATA, header, sizeof(header), data, len);
-  DBG_PRINTF("FLASH_DEFL_DATA...%d", millis() - stamp);
-
-  bool b = response(ESP_FLASH_DEFL_DATA, 3000);
-  DBG_PRINTF(": %d\t", millis() - stamp);
-
-  return (b == 0);
+  return sendCommandGetResponse(ESP_FLASH_DEFL_DATA, header, sizeof(header),
+                                data, len, 3000);
 }
 
 bool ESP32BootROMClass::endFlashDefl(uint32_t reboot) {
   const uint32_t data[1] = {reboot};
 
-  command(ESP_FLASH_DEFL_END, data, sizeof(data));
-
-  return (response(ESP_FLASH_DEFL_END, 3000) == 0);
+  return sendCommandGetResponse(ESP_FLASH_DEFL_END, data, sizeof(data), NULL, 0,
+                                3000);
 }
 
 bool ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
                                  uint8_t *result) {
   const uint32_t data[4] = {offset, size, 0, 0};
-
-  command(ESP_SPI_FLASH_MD5, data, sizeof(data));
-
   uint8_t resp[32];
-  VERIFY(0 == response(ESP_SPI_FLASH_MD5, 6000, resp));
+
+  VERIFY(sendCommandGetResponse(ESP_SPI_FLASH_MD5, data, sizeof(data), NULL, 0,
+                                6000, resp));
 
   // Note that the ESP32 ROM loader returns the md5sum as 32 hex encoded ASCII
   // bytes, whereas the stub loader returns the md5sum as 16 raw data bytes of
@@ -614,8 +596,10 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
       opcode == ESP_FLASH_DEFL_DATA) {
     checksum = ESP_CHECKSUM_MAGIC; // seed
 
-    for (uint16_t i = 0; i < len2; i++) {
-      checksum ^= ((const uint8_t *)data2)[i];
+    if (data2) {
+      for (uint16_t i = 0; i < len2; i++) {
+        checksum ^= ((const uint8_t *)data2)[i];
+      }
     }
   }
 

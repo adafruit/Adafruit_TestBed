@@ -60,9 +60,9 @@ public:
   uint32_t read_chip_detect(void);
 
   // uncompressed
-  int beginFlash(uint32_t offset, uint32_t size, uint32_t chunkSize);
-  int dataFlash(const void *data, uint32_t length);
-  int endFlash(uint32_t reboot);
+  bool beginFlash(uint32_t offset, uint32_t size, uint32_t chunkSize);
+  bool dataFlash(const void *data, uint32_t length);
+  bool endFlash(uint32_t reboot);
 
   // compressed
   bool beginFlashDefl(uint32_t offset, uint32_t size, uint32_t zip_size);
@@ -73,7 +73,7 @@ public:
 
 private:
   void resetBootloader(void);
-  int sync();
+  bool sync();
   bool uploadStub(const esp32_stub_loader_t *stub);
   bool syncStub(uint32_t timeout_ms);
 
@@ -88,8 +88,8 @@ private:
                               void *body = NULL);
 
   // High Level commands
-  int changeBaudrate(uint32_t baudrate);
-  int spiAttach();
+  bool changeBaudrate(uint32_t baudrate);
+  bool spiAttach();
 
   bool beginMem(uint32_t offset, uint32_t size, uint32_t chunkSize);
   bool dataMem(const void *data, uint32_t length);
