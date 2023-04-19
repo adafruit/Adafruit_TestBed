@@ -423,6 +423,7 @@ bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
   _esp32_chip_detect = esp32boot->begin(baudrate);
 
   if (_esp32_chip_detect) {
+    setColor(0xFFFFFF);
     LCD_printf("Synced OK");
     return true;
   } else {
@@ -519,10 +520,12 @@ Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
     // so do a final dummy operation which will not be 'ack'ed
     // until the last block has actually been written out to flash
     if (esp32boot->isRunningStub()) {
+      Serial.println("Dummy read chip detect after final block");
       (void)esp32boot->read_chip_detect();
     }
 
     //------------- MD5 verification -------------//
+    Serial.println("Verifying MD5");
     esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
 
     if (0 == memcmp(zfile->md5, esp_md5, 16)) {

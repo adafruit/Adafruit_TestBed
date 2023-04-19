@@ -76,18 +76,3 @@ void setup() {
 
 void loop() {
 }
-
-//--------------------------------------------------------------------+
-// Setup and Loop on Core1
-//--------------------------------------------------------------------+
-
-// call usbh_begin() here to make pio usb background task run on core1
-// NOTE: Brain.begin() should be called here as well to prevent race condition
-void setup1() {
-
-}
-
-// core1's loop: process usb host task on core1
-void loop1() {
-  yield();
-}

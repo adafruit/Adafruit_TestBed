@@ -157,6 +157,7 @@ ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
   _supports_encrypted_flash = true;
   _stub_running = false;
   _rom_8266_running = false;
+  _chip_detect = 0;
 
   _flashSequenceNumber = 0;
 }
@@ -206,15 +207,15 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
   // Serial.printf("After %u ms\r\n", millis());
 
   //------------- Chip Detect -------------//
-  uint32_t chip_detect = read_chip_detect();
-  if (!chip_detect) {
+  _chip_detect = read_chip_detect();
+  if (!_chip_detect) {
     return 0;
   }
 
-  Serial.printf("Chip Detect: 0x%08X\r\n", chip_detect);
+  Serial.printf("Chip Detect: 0x%08X\r\n", _chip_detect);
 
   const esp32_stub_loader_t *stub = NULL;
-  switch (chip_detect) {
+  switch (_chip_detect) {
   case CHIP_DETECT_MAGIC_ESP32:
     // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false
     Serial.println("Found ESP32");
@@ -253,7 +254,7 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
     }
     // _serial->end();
     delay(100);
-    Serial.println("Updating local Serial baudrate");
+    Serial.printf("Updating local Serial baudrate to %u\r\n", baudrate);
     _serial->begin(baudrate);
   }
 
@@ -265,7 +266,7 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
     }
   }
 
-  return chip_detect;
+  return _chip_detect;
 }
 
 void ESP32BootROMClass::end() {
@@ -301,6 +302,8 @@ bool ESP32BootROMClass::changeBaudrate(uint32_t baudrate) {
   if (_stub_running) {
     data[1] = ESP_ROM_BAUD; // we only changed from 115200 to higher baud
   }
+
+  DBG_PRINTF("Changing baudrate to %u\r\n", baudrate);
 
   return sendCommandGetResponse(ESP_CHANGE_BAUDRATE, (uint8_t *)data,
                                 sizeof(data), NULL, 0, 3000);
@@ -470,7 +473,7 @@ bool ESP32BootROMClass::beginMem(uint32_t offset, uint32_t size,
   uint16_t const len = 16;
 
   _flashSequenceNumber = 0;
-  return sendCommandGetResponse(ESP_MEM_BEGIN, data, len, NULL, 0, 120000);
+  return sendCommandGetResponse(ESP_MEM_BEGIN, data, len, NULL, 0, 3000);
 }
 
 bool ESP32BootROMClass::dataMem(const void *data, uint32_t length) {
@@ -575,23 +578,31 @@ bool ESP32BootROMClass::sendCommandGetResponse(uint8_t opcode, const void *data,
                                                const void *data2, uint16_t len2,
                                                uint32_t timeout_ms,
                                                void *body) {
-  command(opcode, data, length, data2, len2);
+  for (uint8_t retry = 0; retry < 3; retry++) {
+    command(opcode, data, length, data2, len2);
+    if (response(opcode, timeout_ms, body) == 0) {
+      return true;
+    }
 
-  return (response(opcode, timeout_ms, body) == 0);
+    Serial.printf("Command 0x%02x failed, retrying %u/3...\r\n", opcode,
+                  retry + 1);
+    delay(5);
+  }
+
+  return false;
 }
 
 void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
                                 const void *data2, uint16_t len2) {
   uint32_t checksum = 0;
 
-  // ESP8266 ROM bootloader is slow to receive commands probably due to the fact
-  // that it has to work with both baudrate 74800bps and 115200bps. So we need
-  // to wait for it to be ready before sending next command
-  if (_rom_8266_running && !_stub_running) {
+  // ESP8266 ROM bootloader is slow to ready receiving commands. Need
+  // to wait a bit before sending new command
+  if (_rom_8266_running || (_chip_detect == CHIP_DETECT_MAGIC_ESP8266)) {
     delay(5);
   }
 
-  // for FLASH_DATA and MEM_DATA: data is header, data2 is actual payload
+  // for FLASH_DATA and MEM_DATA: data is header, data2 is actual payloada
   if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA ||
       opcode == ESP_FLASH_DEFL_DATA) {
     checksum = ESP_CHECKSUM_MAGIC; // seed

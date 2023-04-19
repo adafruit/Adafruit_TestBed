@@ -107,6 +107,7 @@ private:
   bool _supports_encrypted_flash;
   bool _stub_running;
   bool _rom_8266_running;
+  uint32_t _chip_detect;
 
   uint32_t _flashSequenceNumber;
 };
