@@ -14,7 +14,7 @@ repos:
   rev: v15.0.7
   hooks:
   - id: clang-format
-    exclude: ^(examples)
+    exclude: ^(examples/.*.ino)
     types_or: [c++, c, header]
 
 - repo: https://github.com/codespell-project/codespell
