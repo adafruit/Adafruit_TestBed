@@ -1,4 +1,5 @@
 // This sketch program ESP32 by flashing bin file from on-flash (with .h header)
+// Supported/tested ESP MCU are: ESP32, ESP32-S2, ESP32-S3, ESP8266
 // Hardware wiring:
 // - Brain GPIO28 <-> ESP32 IO0
 // - Brain Reset  <-> ESP32 Enable
@@ -44,7 +45,7 @@ void print_speed(size_t count, uint32_t ms) {
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
-  Serial.println("Tester Brains: Programming ESP32 with UART!");
+  Serial.println("Tester Brains: Programming ESP with UART!");
 
   Brain.begin();
   Brain.usbh_setVBus(true); // enable VBUS for power
