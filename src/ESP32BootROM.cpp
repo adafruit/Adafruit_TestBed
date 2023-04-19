@@ -156,6 +156,7 @@ ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
 
   _supports_encrypted_flash = true;
   _stub_running = false;
+  _rom_8266_running = false;
 
   _flashSequenceNumber = 0;
 }
@@ -173,7 +174,7 @@ void ESP32BootROMClass::resetBootloader(void) {
   while (!_serial) {
     delay(10);
   }
-  delay(50); // additional delay for SerialHost connected
+  delay(100); // additional delay for SerialHost connected
 
   // IO0 high: done
   digitalWrite(_gpio0Pin, HIGH);
@@ -189,15 +190,20 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
 
   int synced = 0;
 
-  for (int retries = 0; !synced && (retries < 10); retries++) {
+  for (int retries = 0; retries < 10; retries++) {
     Serial.println("Trying to sync");
     synced = sync();
+    if (synced) {
+      break;
+    }
+
+    delay(10);
   }
   if (!synced) {
     return 0;
   }
-
   Serial.println("Synced!");
+  // Serial.printf("After %u ms\r\n", millis());
 
   //------------- Chip Detect -------------//
   uint32_t chip_detect = read_chip_detect();
@@ -205,35 +211,35 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
     return 0;
   }
 
+  Serial.printf("Chip Detect: 0x%08X\r\n", chip_detect);
+
   const esp32_stub_loader_t *stub = NULL;
   switch (chip_detect) {
   case CHIP_DETECT_MAGIC_ESP32:
     // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false
+    Serial.println("Found ESP32");
     stub = &stub_esp32;
     _supports_encrypted_flash = false;
-    Serial.println("Found ESP32");
     break;
   case CHIP_DETECT_MAGIC_ESP32S2:
-    stub = &stub_esp32s2;
     Serial.println("Found ESP32-S2");
+    stub = &stub_esp32s2;
     break;
 
   case CHIP_DETECT_MAGIC_ESP32S3:
-    stub = &stub_esp32s3;
     Serial.println("Found ESP32-S3");
+    stub = &stub_esp32s3;
+    break;
+
+  case CHIP_DETECT_MAGIC_ESP8266:
+    Serial.println("Found ESP8266");
+    stub = &stub_esp8266;
     break;
 
   default:
     Serial.println("Found unknown ESP");
     break;
   }
-
-#if 0
-  uint8_t mac[6];
-  read_MAC(mac);
-  Serial.printf("MAC addr: %02X:%02X:%02X:%02X:%02X:%02X\n\r",
-                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-#endif
 
   if (stub) {
     VERIFY(uploadStub(stub));
@@ -242,7 +248,7 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
 
   if (baudrate != ESP_ROM_BAUD) {
     if (!changeBaudrate(baudrate)) {
-      Serial.print("Failed to change baudrate");
+      Serial.println("Failed to change baudrate");
       return 0;
     }
     // _serial->end();
@@ -437,13 +443,8 @@ bool ESP32BootROMClass::md5Flash(uint32_t offset, uint32_t size,
 
 bool ESP32BootROMClass::read_reg(uint32_t addr, uint32_t *val,
                                  uint32_t timeout_ms) {
-  command(ESP_READ_REG, &addr, 4);
-
-  if (0 == response(ESP_READ_REG, timeout_ms, val)) {
-    return true;
-  } else {
-    return false;
-  }
+  return sendCommandGetResponse(ESP_READ_REG, &addr, 4, NULL, 0, timeout_ms,
+                                val);
 }
 
 uint32_t ESP32BootROMClass::read_chip_detect(void) {
@@ -485,11 +486,9 @@ bool ESP32BootROMClass::beginMem(uint32_t offset, uint32_t size,
                                  uint32_t chunkSize) {
   const uint32_t data[] = {size, div_ceil(size, chunkSize), chunkSize, offset};
   uint16_t const len = 16;
-  command(ESP_MEM_BEGIN, data, len);
 
   _flashSequenceNumber = 0;
-
-  return (response(ESP_MEM_BEGIN, 120000) == 0);
+  return sendCommandGetResponse(ESP_MEM_BEGIN, data, len, NULL, 0, 120000);
 }
 
 bool ESP32BootROMClass::dataMem(const void *data, uint32_t length) {
@@ -499,9 +498,8 @@ bool ESP32BootROMClass::dataMem(const void *data, uint32_t length) {
   header[2] = 0;
   header[3] = 0;
 
-  command(ESP_MEM_DATA, header, sizeof(header), data, length);
-
-  return (response(ESP_MEM_DATA, 3000) == 0);
+  return sendCommandGetResponse(ESP_MEM_DATA, header, sizeof(header), data,
+                                length, 3000);
 }
 
 bool ESP32BootROMClass::endMem(uint32_t entry) {
@@ -509,9 +507,7 @@ bool ESP32BootROMClass::endMem(uint32_t entry) {
   data[0] = (entry == 0);
   data[1] = entry;
 
-  command(ESP_MEM_END, data, sizeof(data));
-
-  return (response(ESP_MEM_END, 3000) == 0);
+  return sendCommandGetResponse(ESP_MEM_END, data, sizeof(data), NULL, 0, 3000);
 }
 
 bool ESP32BootROMClass::syncStub(uint32_t timeout_ms) {
@@ -583,6 +579,7 @@ bool ESP32BootROMClass::uploadStub(const esp32_stub_loader_t *stub) {
   VERIFY(endMem(stub->entry));
 
   _stub_running = true;
+  _rom_8266_running = false;
 
   return true;
 }
@@ -591,9 +588,26 @@ bool ESP32BootROMClass::uploadStub(const esp32_stub_loader_t *stub) {
 // Command & Response
 //--------------------------------------------------------------------+
 
+bool ESP32BootROMClass::sendCommandGetResponse(uint8_t opcode, const void *data,
+                                               uint16_t length,
+                                               const void *data2, uint16_t len2,
+                                               uint32_t timeout_ms,
+                                               void *body) {
+  command(opcode, data, length, data2, len2);
+
+  return (response(opcode, timeout_ms, body) == 0);
+}
+
 void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
                                 const void *data2, uint16_t len2) {
   uint32_t checksum = 0;
+
+  // ESP8266 ROM bootloader is slow to receive commands probably due to the fact
+  // that it has to work with both baudrate 74800bps and 115200bps. So we need
+  // to wait for it to be ready before sending next command
+  if (_rom_8266_running && !_stub_running) {
+    delay(5);
+  }
 
   // for FLASH_DATA and MEM_DATA: data is header, data2 is actual payload
   if (opcode == ESP_FLASH_DATA || opcode == ESP_MEM_DATA ||
@@ -617,13 +631,133 @@ void ESP32BootROMClass::command(uint8_t opcode, const void *data, uint16_t len,
   writeEscapedBytes((uint8_t *)&checksum, sizeof(checksum));
   writeEscapedBytes((uint8_t *)data, len);
   if (data2 && len2) {
-    writeEscapedBytes((uint8_t *)data2, len2);
+    writeEscapedBytes((uint8_t const *)data2, len2);
   }
 
   _serial->write(0xc0);
   _serial->flush();
 
   DBG_PRINTF("c0\r\n");
+}
+
+// return response status if success, -1 if failed
+int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms,
+                                void *body) {
+  // Response Packet is composed of
+  // - 1B: slip start
+  // - 8B: fixed response ( struct below )
+  // - nB: variable response payload ( if any )
+  // - 2B: status, error
+  // - 2B: reserved // ROM only, not stub
+  // - 1B: slip end
+  struct __packed_aligned {
+    uint8_t dir; // 0x01 for response
+    uint8_t opcode;
+    uint16_t length;    // at least 2 (or 4) for status bytes
+    uint32_t reg_value; // READ_REG response. zero otherwise
+  } fixed_resp;
+
+  uint8_t status[4] = {0};
+
+  uint32_t end_ms = millis() + timeout_ms;
+
+  if (!readSLIP(timeout_ms)) {
+    Serial.printf("line %d: timeout reading SLIP\r\n", __LINE__);
+    return -1;
+  }
+
+  // read fixed response first
+  if (8 != readBytes(&fixed_resp, 8, end_ms - millis())) {
+    Serial.printf("line %d\r\n", __LINE__);
+    return -1; // probably timeout
+  }
+
+  // Status byte are 2 or 4 bytes as follows:
+  // - ESP32 Boot ROM: 2 bytes
+  // - ESP8266 ROM and Stub (all chips): 4 bytes
+  uint8_t status_len = ((_stub_running || _rom_8266_running) ? 2 : 4);
+
+  // ESP8266 ROM only has 2 bytes status which will be larger than length
+  // response in sync() message this is condition is an indicator that ESP8266
+  // ROM is used
+  if ((opcode == ESP_SYNC) && (fixed_resp.length < status_len)) {
+    _rom_8266_running = true;
+    status_len = 2;
+  }
+
+  // read variable payload if any
+  // status len can be miscalculated for ESP8266 ROM (2 bytes instead of 4)
+  uint16_t const payload_len = fixed_resp.length - status_len;
+  uint8_t data[payload_len];
+
+  if (payload_len) {
+    uint16_t rd_len = readBytes(data, payload_len, end_ms - millis());
+    if (payload_len != rd_len) {
+      Serial.printf("Fixed Response: dir = %02x, opcode = %02x, length = %04x, "
+                    "reg_value = %08x\r\n",
+                    fixed_resp.dir, fixed_resp.opcode, fixed_resp.length,
+                    fixed_resp.reg_value);
+      Serial.printf(
+          "line %d: payload_len = %u, rd_len = %u, status_len = %u\r\n",
+          __LINE__, payload_len, rd_len, status_len);
+
+      if (rd_len) {
+        DBG_PRINT_BUF(data, rd_len);
+      }
+      return -1; // probably timeout
+    }
+  }
+
+  if (body) {
+    if (opcode == ESP_READ_REG) {
+      memcpy(body, &fixed_resp.reg_value, 4);
+    } else {
+      memcpy(body, data, payload_len);
+    }
+  }
+
+  // read status
+  if (status_len != readBytes(status, status_len, end_ms - millis())) {
+    Serial.printf("line %d\r\n", __LINE__);
+    return -1; // probably timeout
+  }
+
+  if (!readSLIP(end_ms - millis())) {
+    Serial.printf("line %d\r\n", __LINE__);
+    return -1;
+  }
+
+#if DEBUG
+  Serial.printf("<= c0 %02x %02x %04x %08x ", fixed_resp.dir, fixed_resp.opcode,
+                fixed_resp.length, fixed_resp.reg_value);
+  if (payload_len) {
+    DBG_PRINT_BUF(data, payload_len);
+  }
+  DBG_PRINT_BUF(status, status_len);
+  Serial.println("c0");
+#endif
+
+  // check direction, opcode and status
+  if (fixed_resp.dir == 0x01 && fixed_resp.opcode == opcode &&
+      status[0] == 0x00 && status[1] == 0x00) {
+    return 0; // status[0];
+  }
+
+  const char *mess_arr[0x0b + 1] = {
+      NULL, NULL, NULL, NULL, NULL, "Received message is invalid",
+      "Failed to act on received message", "Invalid CRC in message",
+      "Flash write error", //  after writing a block of data to flash, the ROM
+                           //  loader reads the value back and the 8-bit CRC is
+                           //  compared to the data read from flash. If they
+                           //  don’t match, this error is returned.
+      "Flash read error", "Flash read length error", "Deflate error"};
+
+  const char *mess =
+      (status[1] <= 0x0b) ? mess_arr[status[1]] : "Unknown Error";
+  Serial.printf("response failed: status = %02x %02x, %s\r\n", status[0],
+                status[1], mess);
+
+  return -1;
 }
 
 // read until we found SLIP (0xC0) byte
@@ -674,104 +808,6 @@ uint16_t ESP32BootROMClass::readBytes(void *buf, uint16_t length,
   }
 
   return count;
-}
-
-// return response status if success, -1 if failed
-int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms,
-                                void *body) {
-  // Response Packet is composed of
-  // - 1B: slip start
-  // - 8B: fixed response ( struct below )
-  // - nB: variable response payload ( if any )
-  // - 2B: status, error
-  // - 2B: reserved // ROM only, not stub
-  // - 1B: slip end
-  struct __packed_aligned {
-    uint8_t dir; // 0x01 for response
-    uint8_t opcode;
-    uint16_t length;    // at least 2 (or 4) for status bytes
-    uint32_t reg_value; // READ_REG response. zero otherwise
-  } fixed_resp;
-
-  uint8_t status[4] = {0};
-  uint8_t const status_len = (_stub_running ? 2 : 4);
-
-  uint32_t end_ms = millis() + timeout_ms;
-
-  if (!readSLIP(timeout_ms)) {
-    return -1;
-  }
-
-  // read fixed response first
-  if (8 != readBytes(&fixed_resp, 8, end_ms - millis())) {
-    Serial.printf("line %d\r\n", __LINE__);
-    return -1; // probably timeout
-  }
-
-  // read variable payload if any
-  uint16_t const payload_len = fixed_resp.length - status_len;
-  uint8_t data[payload_len];
-
-  if (payload_len) {
-    uint16_t rd_len = readBytes(data, payload_len, end_ms - millis());
-    if (payload_len != rd_len) {
-      Serial.printf("line %d: payload_len = %u, rd_len = %u\r\n", __LINE__,
-                    payload_len, rd_len);
-      if (rd_len) {
-        DBG_PRINT_BUF(data, rd_len);
-      }
-      return -1; // probably timeout
-    }
-  }
-
-  if (body) {
-    if (opcode == ESP_READ_REG) {
-      memcpy(body, &fixed_resp.reg_value, 4);
-    } else {
-      memcpy(body, data, payload_len);
-    }
-  }
-
-  // read status
-  if (status_len != readBytes(status, status_len, end_ms - millis())) {
-    Serial.printf("line %d\r\n", __LINE__);
-    return -1; // probably timeout
-  }
-
-  if (!readSLIP(end_ms - millis())) {
-    Serial.printf("line %d\r\n", __LINE__);
-    return -1;
-  }
-
-#if DEBUG
-  Serial.printf("<= c0 %02x %02x %04x %08x ", fixed_resp.dir, fixed_resp.opcode,
-                fixed_resp.length, fixed_resp.reg_value);
-  DBG_PRINT_BUF(data, payload_len);
-  DBG_PRINT_BUF(status, status_len);
-  Serial.println("c0");
-#endif
-
-  // check direction, opcode and status
-  if (fixed_resp.dir == 0x01 && fixed_resp.opcode == opcode &&
-      status[0] == 0x00 && status[1] == 0x00) {
-    return 0; // status[0];
-  }
-
-  const char *mess_arr[0x0b + 1] = {
-      NULL, NULL, NULL, NULL, NULL, "Received message is invalid",
-      "Failed to act on received message", "Invalid CRC in message",
-      "Flash write error", //  after writing a block of data to flash, the ROM
-                           //  loader reads the value back and the 8-bit CRC is
-                           //  compared to the data read from flash. If they
-                           //  don’t match, this error is returned.
-      "Flash read error", "Flash read length error", "Deflate error"};
-
-  const char *mess =
-      (status[1] <= 0x0b) ? mess_arr[status[1]] : "Unknown Error";
-  Serial.printf("response failed: status = %02x %02x, %s\r\n", status[0],
-                status[1], mess);
-
-  return -1;
 }
 
 void ESP32BootROMClass::writeEscapedBytes(const uint8_t *data,
