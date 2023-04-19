@@ -120,7 +120,6 @@ struct {
 #error "Please select BIN_FILES in esp_binaries.h"
 #endif
 
-
 };
 
 enum { BIN_FILES_COUNT = sizeof(bin_files) / sizeof(bin_files[0]) };
