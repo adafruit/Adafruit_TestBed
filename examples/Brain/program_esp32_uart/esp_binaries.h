@@ -26,7 +26,7 @@
 #define ESP_BINARIES_H_
 
 // Configuration: select which bins to flash
-#define BIN_FILES BIN_ESP8266
+#define BIN_FILES BIN_METRO_S2
 
 //------------- Binaries Define -------------//
 
