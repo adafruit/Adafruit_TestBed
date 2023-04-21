@@ -423,6 +423,7 @@ bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
   _esp32_chip_detect = esp32boot->begin(baudrate);
 
   if (_esp32_chip_detect) {
+    setColor(0xFFFFFF);
     LCD_printf("Synced OK");
     return true;
   } else {
@@ -519,10 +520,12 @@ Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
     // so do a final dummy operation which will not be 'ack'ed
     // until the last block has actually been written out to flash
     if (esp32boot->isRunningStub()) {
+      Serial.println("Dummy read chip detect after final block");
       (void)esp32boot->read_chip_detect();
     }
 
     //------------- MD5 verification -------------//
+    Serial.println("Verifying MD5");
     esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
 
     if (0 == memcmp(zfile->md5, esp_md5, 16)) {
@@ -672,15 +675,21 @@ bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
 // LCD
 //--------------------------------------------------------------------+
 
-// 1s = 1.000.000 us --> 120.000.000 nop
-// 1 us -> 120 nop
-// full frame, 1.25 us -> 150 nop
-//  - T1H 0,76 us -> 91 nop
-//  - T0H 0,36 us -> 43 nop
+void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
+    uint32_t color) {
+  static uint32_t end_us = 0;
+  static uint32_t last_color = 0x123456;
 
-void Adafruit_TestBed_Brains::setColor(uint32_t color) {
-  uint8_t r = (uint8_t)(color >> 16), g = (uint8_t)(color >> 8),
-          b = (uint8_t)color;
+  if (last_color == color) {
+    // no need to update
+    return;
+  }
+  last_color = color;
+
+  uint8_t r = (uint8_t)(color >> 16); // red
+  uint8_t g = (uint8_t)(color >> 8);  // green
+  uint8_t b = (uint8_t)color;         // blue
+
   uint8_t buf[3] = {r, g, b};
 
   uint8_t *ptr, *end, p, bitMask;
@@ -691,62 +700,81 @@ void Adafruit_TestBed_Brains::setColor(uint32_t color) {
   p = *ptr++;
   bitMask = 0x80;
 
-  // 800 KHz
-  for (;;) {
+  // wait for previous frame to finish
+  enum { FRAME_TIME_US = 300 };
+
+  uint32_t now = end_us;
+  while (now - end_us < FRAME_TIME_US) {
+    now = micros();
+    if (now < end_us) {
+      // micros() overflow
+      end_us = now;
+    }
+  }
+
+  uint32_t const isr_context = save_and_disable_interrupts();
+
+  // RP2040 is 120 MHz, 120 cycle = 1us = 1000 ns
+  // Neopixel is 800 KHz, 1T = 1.25 us = 150 nop
+  while (1) {
     if (p & bitMask) {
-      // T1H 0,76 us -> 91 nop
+      // T1H 0,8 us = 96 - 1 = 95 nop
       sio_hw->gpio_set = pinMask;
-      asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop;");
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
 
-      // 150 - 91 = 59 nop
+      // T1L 0,45 = 54 - 10 (ifelse) - 5 (overhead) = 44 nop
       sio_hw->gpio_clr = pinMask;
-      asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop;");
     } else {
-      // T0H 0,36 us -> 43 nop
+      // T0H 0,4 us = 48 - 1 = 47 nop
       sio_hw->gpio_set = pinMask;
-      asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop;");
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop;");
 
-      // 150 - 43 = 107 nop
+      // T0L 0.85 us = 102 - 10 (ifelse) - 5 (overhead) = 87 nop
       sio_hw->gpio_clr = pinMask;
-      asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-          "nop; nop; nop; nop; nop; nop; nop;");
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop;");
     }
 
-    // if a full byte is sent, next to another byte
-    if (0 == (bitMask >>= 1)) {
-      if (ptr >= end)
+    if (bitMask >>= 1) {
+      // not full byte, shift to next bit
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+    } else {
+      // probably take 10 nops
+      // if a full byte is sent, next to another byte
+      if (ptr >= end) {
         break;
+      }
       p = *ptr++;
       bitMask = 0x80;
     }
   }
+
+  restore_interrupts(isr_context);
+
+  end_us = micros();
 }
 
 void Adafruit_TestBed_Brains::lcd_write(uint8_t linenum, char linebuf[17]) {

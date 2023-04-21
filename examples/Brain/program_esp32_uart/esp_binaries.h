@@ -25,6 +25,11 @@
 #ifndef ESP_BINARIES_H_
 #define ESP_BINARIES_H_
 
+// Configuration: select which bins to flash
+#define BIN_FILES BIN_METRO_S2
+
+//------------- Binaries Define -------------//
+
 #define BIN_ESP32_NINA_1_7_4 0 // nina 1.7.4
 #define BIN_ESP32_WIFI_AP_SKETCH                                               \
   1 // esp32 wifi accesspoint sketch with ssdi "YourAP"
@@ -36,23 +41,37 @@
 #define BIN_DEVKIT_S2 20 // Espressif s2 devkit
 #define BIN_DEVKIT_S3 21 // Espressif s3 devkit
 
-// select which bins to flash
-#define BIN_FILES BIN_METRO_S2
+#define BIN_ESP8266 30 // Espressif esp8266
+
+//------------- Binaries include -------------//
 
 #if BIN_FILES == BIN_ESP32_WIFI_AP_SKETCH
 #include "esp_binaries/wifi_ap_binaries.h"
+
 #elif BIN_FILES == BIN_NINA_1_7_4
 #include "esp_binaries/nina_1_7_4_binaries.h"
+
 #elif BIN_FILES == BIN_FEATHER_S2
 #include "esp_binaries/feather_esp32s2_binaries.h"
+
 #elif BIN_FILES == BIN_METRO_S2
 #include "esp_binaries/metro_esp32s2_binaries.h"
+
 #elif BIN_FILES == BIN_FEATHER_S3
 #include "esp_binaries/feather_esp32s3_binaries.h"
+
 #elif BIN_FILES == BIN_DEVKIT_S2
 #include "esp_binaries/esp32s2_devkit_binaries.h"
+
 #elif BIN_FILES == BIN_DEVKIT_S3
 #include "esp_binaries/esp32s3_devkit_binaries.h"
+
+#elif BIN_FILES == BIN_ESP8266
+#include "esp_binaries/esp8266_binaries.h"
+
+#else
+#error "Please select BIN_FILES in esp_binaries.h"
+
 #endif
 
 struct {
@@ -94,7 +113,13 @@ struct {
     {0x8000, &Blink_ino_partitions},
     {0xe000, &boot_app0},
     {0x10000, &Blink_ino},
+
+#elif BIN_FILES == BIN_ESP8266
+    {0x00000, &esp8266_blink_io0},
+#else
+#error "Please select BIN_FILES in esp_binaries.h"
 #endif
+
 };
 
 enum { BIN_FILES_COUNT = sizeof(bin_files) / sizeof(bin_files[0]) };
