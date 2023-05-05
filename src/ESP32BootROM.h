@@ -21,7 +21,6 @@
 #ifndef ESP32_BOOTROM_H
 #define ESP32_BOOTROM_H
 
-#include "Adafruit_TinyUSB.h"
 #include <Arduino.h>
 
 #define ESP32_DEFAULT_TIMEOUT 3000
@@ -45,8 +44,8 @@ typedef struct {
 
 class ESP32BootROMClass {
 public:
-  ESP32BootROMClass(Adafruit_USBH_CDC &serial_host);
-  ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin);
+  ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin = -1,
+                    int resetnPin = -1);
 
   // return chip detect magic if success, otherwise 0
   uint32_t begin(unsigned long baudrate);

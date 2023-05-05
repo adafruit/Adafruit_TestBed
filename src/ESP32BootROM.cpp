@@ -24,6 +24,10 @@
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
 
+#ifdef USE_TINYUSB
+#include "Adafruit_TinyUSB.h"
+#endif
+
 #define DEBUG 0
 
 #if DEBUG
@@ -168,11 +172,6 @@ ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
   _resetnPin = resetnPin;
 }
 
-ESP32BootROMClass::ESP32BootROMClass(Adafruit_USBH_CDC &serial_host)
-    : _serial(&serial_host) {
-  init();
-}
-
 void ESP32BootROMClass::resetBootloader(void) {
   if (_gpio0Pin >= 0 && _resetnPin >= 0) {
     // IO0 and Resetn pins are available
@@ -195,7 +194,9 @@ void ESP32BootROMClass::resetBootloader(void) {
 
     // IO0 high: done
     digitalWrite(_gpio0Pin, HIGH);
-  } else {
+  }
+#ifdef USE_TINYUSB
+  else {
     // Serial Host using setDtrRts()
     // - DTR -> IO0
     // - RTS -> Reset
@@ -218,6 +219,7 @@ void ESP32BootROMClass::resetBootloader(void) {
     // IO0 high, Reset High: done
     serial_host->setDtrRts(false, false);
   }
+#endif
 }
 
 uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
@@ -310,11 +312,13 @@ void ESP32BootROMClass::end() {
     digitalWrite(_gpio0Pin, HIGH);
     digitalWrite(_resetnPin, HIGH);
   } else {
+    // #ifdef USE_TINYUSB
     // Maybe we should reset using RTS
     //    Adafruit_USBH_CDC* serial_host = (Adafruit_USBH_CDC*)_serial;
     //    serial_host->setDtrRts(false, true);
     //    delay(20);
     //    serial_host->setDtrRts(false, false);
+    // #endif
   }
   //_serial->end();
 }
