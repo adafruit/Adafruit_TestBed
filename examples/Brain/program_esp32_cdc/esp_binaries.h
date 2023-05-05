@@ -25,9 +25,17 @@
 #ifndef ESP_BINARIES_H_
 #define ESP_BINARIES_H_
 
+// Configuration: select which bins to flash
+#define BIN_FILES BIN_FEATHER_ESP32_V2_BLINKY
+
+//--------------------------------------------------------------------+
+// LIST OF BINARIES
+//--------------------------------------------------------------------+
+
 #define BIN_ESP32_NINA_1_7_4 0 // nina 1.7.4
 #define BIN_ESP32_WIFI_AP_SKETCH                                               \
   1 // esp32 wifi accesspoint sketch with ssdi "YourAP"
+#define BIN_FEATHER_ESP32_V2_BLINKY 2 // Feather esp32 v2 blinky sketch
 
 #define BIN_FEATHER_S2 10 // Feather esp32s2 factory firmware
 #define BIN_FEATHER_S3 11 // Feather esp32s3 factory firmware
@@ -36,23 +44,34 @@
 #define BIN_DEVKIT_S2 20 // Espressif s2 devkit
 #define BIN_DEVKIT_S3 21 // Espressif s3 devkit
 
-// select which bins to flash
-#define BIN_FILES BIN_METRO_S2
+//--------------------------------------------------------------------+
+// Binaries include
+//--------------------------------------------------------------------+
 
 #if BIN_FILES == BIN_ESP32_WIFI_AP_SKETCH
 #include "esp_binaries/wifi_ap_binaries.h"
+
+#elif BIN_FILES == BIN_FEATHER_ESP32_V2_BLINKY
+#include "esp_binaries/feather_esp32_v2_blinky_binaries.h"
+
 #elif BIN_FILES == BIN_NINA_1_7_4
 #include "esp_binaries/nina_1_7_4_binaries.h"
+
 #elif BIN_FILES == BIN_FEATHER_S2
 #include "esp_binaries/feather_esp32s2_binaries.h"
+
 #elif BIN_FILES == BIN_METRO_S2
 #include "esp_binaries/metro_esp32s2_binaries.h"
+
 #elif BIN_FILES == BIN_FEATHER_S3
 #include "esp_binaries/feather_esp32s3_binaries.h"
+
 #elif BIN_FILES == BIN_DEVKIT_S2
 #include "esp_binaries/esp32s2_devkit_binaries.h"
+
 #elif BIN_FILES == BIN_DEVKIT_S3
 #include "esp_binaries/esp32s3_devkit_binaries.h"
+
 #endif
 
 struct {
@@ -61,6 +80,12 @@ struct {
 } bin_files[] = {
 #if BIN_FILES == BIN_NINA_1_7_4
     {0x00000, &NINA_W102_1_7_4},
+
+#elif BIN_FILES == BIN_FEATHER_ESP32_V2_BLINKY
+    {0x1000, &feather_esp32v2_blinky_bootloader},
+    {0x8000, &feather_esp32v2_blinky_partitions},
+    {0xe000, &boot_app0},
+    {0x10000, &feather_esp32v2_blinky},
 
 #elif BIN_FILES == BIN_FEATHER_S2
     {0x1000, &esp32s2_feather_test_ino_bootloader},
