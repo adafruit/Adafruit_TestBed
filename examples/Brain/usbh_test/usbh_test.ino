@@ -66,7 +66,6 @@ void setup1() {
 
   // Since we only support 1 CDC interface with Tester (also CFG_TUH_CDC = 1)
   // the index will always be 0 for SerialHost
-  // SerialHost.setInterfaceIndex(0);
   SerialHost.begin(115200);
 
   Brain.LCD_printf(0, "No USB attached");
@@ -108,6 +107,19 @@ void tuh_umount_cb(uint8_t daddr)
   Brain.setColor(COLOR_NO_DEV);
   Brain.LCD_printf(0, "No USB attached");
   Brain.LCD_printf(1, "Plug your device");
+}
+
+// Invoked when a device with CDC interface is mounted
+// idx is index of cdc interface in the internal pool.
+void tuh_cdc_mount_cb(uint8_t idx) {
+  // bind SerialHost object to this interface index
+  SerialHost.mount(idx);
+}
+
+// Invoked when a device with CDC interface is unmounted
+void tuh_cdc_umount_cb(uint8_t idx) {
+  // unbind SerialHost if this interface is unmounted
+  SerialHost.umount(idx);
 }
 
 }

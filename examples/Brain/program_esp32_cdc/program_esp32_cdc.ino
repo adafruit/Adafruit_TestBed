@@ -20,14 +20,21 @@
 #define ESP32_RESET     27
 #define ESP32_IO0       28
 
-// Using CDC baudrate does not really matter at all
-#define ESP32_BAUDRATE  115200
+// Note: baudrate does not matter if programming S2/S3 native USB
+// But does matter if programming ESP32/8266 via USB-to-UART chip
+#define ESP32_BAUDRATE  921600
 
 // CDC Host object
 Adafruit_USBH_CDC  SerialHost;
 
-// Defined an boot rom object that use UART Serial1
-ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
+// Defined an boot rom object that use SerialHost
+// Declare BootROM without IO0 and Reset will use SerialHost.setDtrRts() for bootloader reset
+// This is for programming ESP32/8266 via USB-to-UART chip such as FTDI/CP210x/CH9102f
+ESP32BootROMClass ESP32BootROM(SerialHost);
+
+// Declare BootROM with IO0 and Reset will use GPIO for bootloader reset
+// This is typically for programming ESP32-S2/S3 via native USB
+// ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
@@ -39,6 +46,13 @@ void print_speed(size_t count, uint32_t ms) {
   float speed = count_k / sec;
   Brain.LCD_printf(0, "%.01fKB %.01fs", count_k, sec);
   Brain.LCD_printf(1, "Spd: %.01f KB/s", speed);
+}
+
+// Reset using DTR/RTS
+void reset_with_dtr_rts(uint32_t ms) {
+  SerialHost.setDtrRts(false, true);
+  delay(ms);
+  SerialHost.setDtrRts(false, false);
 }
 
 void setup() {
@@ -70,7 +84,10 @@ void setup() {
   Brain.esp32_end();
 
   // reset ESP32 to run new firmware
-  Brain.targetReset();
+  Brain.targetReset(); // reset using Reset pin GPIO27
+
+  // Reset using DTR if GPIO27 is not connected
+  reset_with_dtr_rts(20);
 }
 
 void loop() {
@@ -88,7 +105,6 @@ void setup1() {
 
   // Since we only support 1 CDC interface with Tester (also CFG_TUH_CDC = 1)
   // the index will always be 0 for SerialHost
-  // SerialHost.setInterfaceIndex(0);
   SerialHost.begin(115200);
 
   Brain.LCD_printf(0, "No USB attached");
@@ -130,4 +146,16 @@ void tuh_umount_cb(uint8_t dev_addr)
   Brain.LCD_printf(1, "No USB Device");
 }
 
+// Invoked when a device with CDC interface is mounted
+// idx is index of cdc interface in the internal pool.
+void tuh_cdc_mount_cb(uint8_t idx) {
+  // bind SerialHost object to this interface index
+  SerialHost.mount(idx);
+}
+
+// Invoked when a device with CDC interface is unmounted
+void tuh_cdc_umount_cb(uint8_t idx) {
+  // unbind SerialHost if this interface is unmounted
+  SerialHost.umount(idx);
+}
 }

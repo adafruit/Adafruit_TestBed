@@ -148,44 +148,80 @@ static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
   return (v + d - 1) / d;
 }
 
-ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
-                                     int resetnPin)
-    : _serial(&serial) {
-  _gpio0Pin = gpio0Pin;
-  _resetnPin = resetnPin;
+void ESP32BootROMClass::init() {
+  _gpio0Pin = -1;
+  _resetnPin = -1;
 
   _supports_encrypted_flash = true;
   _stub_running = false;
   _rom_8266_running = false;
   _chip_detect = 0;
-
   _flashSequenceNumber = 0;
 }
 
+ESP32BootROMClass::ESP32BootROMClass(HardwareSerial &serial, int gpio0Pin,
+                                     int resetnPin)
+    : _serial(&serial) {
+  init();
+
+  _gpio0Pin = gpio0Pin;
+  _resetnPin = resetnPin;
+}
+
+ESP32BootROMClass::ESP32BootROMClass(Adafruit_USBH_CDC &serial_host)
+    : _serial(&serial_host) {
+  init();
+}
+
 void ESP32BootROMClass::resetBootloader(void) {
-  // Reset Low ( ESP32 in reset)
-  digitalWrite(_gpio0Pin, LOW);
-  digitalWrite(_resetnPin, LOW);
-  delay(100);
+  if (_gpio0Pin >= 0 && _resetnPin >= 0) {
+    // IO0 and Resetn pins are available
+    pinMode(_gpio0Pin, OUTPUT);
+    pinMode(_resetnPin, OUTPUT);
 
-  // IO0 Low, Reset HIGH (ESP32 out of reset)
-  digitalWrite(_resetnPin, HIGH);
+    // Reset Low (ESP32 in reset)
+    digitalWrite(_gpio0Pin, LOW);
+    digitalWrite(_resetnPin, LOW);
+    delay(100);
 
-  // Wait for serial, needed if using with SerialHost
-  while (!_serial) {
-    delay(10);
+    // IO0 Low, Reset HIGH (ESP32 out of reset)
+    digitalWrite(_resetnPin, HIGH);
+
+    // Wait for serial, needed if using with SerialHost
+    while (!_serial) {
+      delay(10);
+    }
+    delay(100); // additional delay for SerialHost connected
+
+    // IO0 high: done
+    digitalWrite(_gpio0Pin, HIGH);
+  } else {
+    // Serial Host using setDtrRts()
+    // - DTR -> IO0
+    // - RTS -> Reset
+    // DTR & RTS are active low signals, ie True = pin @ 0V, False = pin @ VCC.
+    Adafruit_USBH_CDC *serial_host = (Adafruit_USBH_CDC *)_serial;
+
+    // Wait for serial host
+    while (!serial_host) {
+      delay(10);
+    }
+
+    // IO0 High, Reset Low (ESP32 in reset)
+    serial_host->setDtrRts(false, true);
+    delay(100);
+
+    // IO0 Low, Reset High (ESP32 out of reset)
+    serial_host->setDtrRts(true, false);
+    delay(100);
+
+    // IO0 high, Reset High: done
+    serial_host->setDtrRts(false, false);
   }
-  delay(100); // additional delay for SerialHost connected
-
-  // IO0 high: done
-  digitalWrite(_gpio0Pin, HIGH);
 }
 
 uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
   _serial->begin(ESP_ROM_BAUD);
-
-  pinMode(_gpio0Pin, OUTPUT);
-  pinMode(_resetnPin, OUTPUT);
 
   resetBootloader();
 
@@ -212,7 +248,7 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
     return 0;
   }
 
-  Serial.printf("Chip Detect: 0x%08X\r\n", _chip_detect);
+  Serial.printf("Chip Detect: 0x%08lX\r\n", _chip_detect);
 
   const esp32_stub_loader_t *stub = NULL;
   switch (_chip_detect) {
@@ -254,7 +290,7 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
     }
     // _serial->end();
     delay(100);
-    Serial.printf("Updating local Serial baudrate to %u\r\n", baudrate);
+    Serial.printf("Updating local Serial baudrate to %lu\r\n", baudrate);
     _serial->begin(baudrate);
   }
 
@@ -270,8 +306,16 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
 }
 
 void ESP32BootROMClass::end() {
-  digitalWrite(_gpio0Pin, HIGH);
-  digitalWrite(_resetnPin, HIGH);
+  if (_gpio0Pin >= 0 && _resetnPin >= 0) {
+    digitalWrite(_gpio0Pin, HIGH);
+    digitalWrite(_resetnPin, HIGH);
+  } else {
+    // Maybe we should reset using RTS
+    //    Adafruit_USBH_CDC* serial_host = (Adafruit_USBH_CDC*)_serial;
+    //    serial_host->setDtrRts(false, true);
+    //    delay(20);
+    //    serial_host->setDtrRts(false, false);
+  }
   //_serial->end();
 }
 
@@ -378,7 +422,6 @@ bool ESP32BootROMClass::beginFlashDefl(uint32_t offset, uint32_t size,
 
 bool ESP32BootROMClass::dataFlashDefl(const void *data, uint32_t len) {
   uint32_t header[4];
-  uint32_t stamp = millis();
   header[0] = len;
   header[1] = _flashSequenceNumber++;
   header[2] = 0;
@@ -689,7 +732,7 @@ int ESP32BootROMClass::response(uint8_t opcode, uint32_t timeout_ms,
     uint16_t rd_len = readBytes(data, payload_len, end_ms - millis());
     if (payload_len != rd_len) {
       Serial.printf("Fixed Response: dir = %02x, opcode = %02x, length = %04x, "
-                    "reg_value = %08x\r\n",
+                    "reg_value = %08lx\r\n",
                     fixed_resp.dir, fixed_resp.opcode, fixed_resp.length,
                     fixed_resp.reg_value);
       Serial.printf(
