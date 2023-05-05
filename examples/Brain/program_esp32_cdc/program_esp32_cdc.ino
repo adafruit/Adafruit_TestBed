@@ -1,8 +1,12 @@
-// This sketch program ESP32 by flashing bin file from SD Card
-// Hardware wiring:
-// - Brain GPIO28 <-> ESP32 IO0
-// - Brain Reset  <-> ESP32 Enable
-// - Brain TX/RX  <-> ESP32 RX/TX
+// This sketch program ESP32 by flashing bin file via Serial Host.
+// Hardware wiring is a bit different between S2/S3 and ESP32 + USB-to-UART chip
+//   For S2/S3 with native USB
+//   - Brain GPIO28   <-> ESP32 IO0
+//   - Brain Reset    <-> ESP32 Enable
+//   - Brain USB Host <-> ESP32 native usb
+//   For ESP32 with USB-to-UART chip
+//   - Brain USB Host <-> ESP32 native usb
+//   - There is no need to connect IO0/Reset since we will use DTR/RTS to reset ESP32
 
 // required for Host MSC block device
 #include "SdFat.h"
