@@ -126,6 +126,8 @@ public:
   // ESP32 ROM
   ESP32BootROMClass *esp32boot;
 
+  int _target_rst;
+
 private:
   bool _inited;
   uint8_t _lcd_line;
@@ -135,7 +137,6 @@ private:
   int _vbus_en_pin;
   int _usbh_dp_pin;
 
-  int _target_rst;
   int _target_swdio;
   int _target_swdclk;
 

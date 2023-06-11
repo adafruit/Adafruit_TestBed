@@ -19,7 +19,7 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#if defined(ARDUINO_RASPBERRY_PI_PICO) || defined(__SAMD51__)
+#if defined(ARDUINO_RASPBERRY_PI_PICO) || defined(__SAMD51__) || defined(ARDUINO_ARCH_SAMD)
 
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
