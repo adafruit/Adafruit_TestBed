@@ -44,7 +44,8 @@ typedef struct {
 
 class ESP32BootROMClass {
 public:
-  ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin, int resetnPin);
+  ESP32BootROMClass(HardwareSerial &hwSerial, int gpio0Pin = -1,
+                    int resetnPin = -1);
 
   // return chip detect magic if success, otherwise 0
   uint32_t begin(unsigned long baudrate);
@@ -72,6 +73,7 @@ public:
   bool md5Flash(uint32_t offset, uint32_t size, uint8_t *result);
 
 private:
+  void init();
   void resetBootloader(void);
   bool sync();
   bool uploadStub(const esp32_stub_loader_t *stub);
@@ -100,10 +102,10 @@ private:
   bool readSLIP(uint32_t timeout_ms);
   void writeEscapedBytes(const uint8_t *data, uint16_t length);
 
-private:
   HardwareSerial *_serial;
   int _gpio0Pin;
   int _resetnPin;
+
   bool _supports_encrypted_flash;
   bool _stub_running;
   bool _rom_8266_running;
