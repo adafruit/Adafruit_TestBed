@@ -9,7 +9,8 @@ extern Adafruit_TestBed TB;
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3_NOPSRAM) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO) \
-    || defined(ARDUINO_SAM_DUE)
+    || defined(ARDUINO_SAM_DUE) \
+    || defined(ARDUINO_ARCH_RENESAS_UNO)
   #define SECONDARY_I2C_PORT &Wire1
 #endif
 
