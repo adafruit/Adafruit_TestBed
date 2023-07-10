@@ -160,7 +160,7 @@ void Adafruit_TestBed::targetPowerCycle(uint16_t off_time) {
 /**************************************************************************/
 float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
   float a = analogRead(pin);
-  //theSerial->println(a);
+  // theSerial->println(a);
 
 #if defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ADAFRUIT_QTPY_ESP32C3)
   if (a > 3000) {
