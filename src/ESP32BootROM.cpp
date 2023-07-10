@@ -20,7 +20,7 @@
 */
 
 #if defined(ARDUINO_RASPBERRY_PI_PICO) || defined(__SAMD51__) ||               \
-    defined(ARDUINO_SAMD_ZERO)
+    (defined(ARDUINO_ARCH_SAMD) && defined(ARM_MATH_CM0PLUS))
 
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
