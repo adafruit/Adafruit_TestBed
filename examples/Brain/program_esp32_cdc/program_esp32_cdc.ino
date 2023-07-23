@@ -21,6 +21,10 @@
 // bin_files[] is defined accordingly
 #include "esp_binaries.h"
 
+// 1 if programming ESP32-S2/S3 via native USB
+// 0 if programming ESP32/8266 via USB-to-UART chip such as FTDI/CP210x/CH9102f
+#define ESP32_NATIVE_USB 1
+
 #define ESP32_RESET     27
 #define ESP32_IO0       28
 
@@ -31,14 +35,21 @@
 // CDC Host object
 Adafruit_USBH_CDC  SerialHost;
 
-// Defined an boot rom object that use SerialHost
-// Declare BootROM without IO0 and Reset will use SerialHost.setDtrRts() for bootloader reset
-// This is for programming ESP32/8266 via USB-to-UART chip such as FTDI/CP210x/CH9102f
-//ESP32BootROMClass ESP32BootROM(SerialHost);
+#if ESP32_NATIVE_USB
 
 // Declare BootROM with IO0 and Reset will use GPIO for bootloader reset
 // This is typically for programming ESP32-S2/S3 via native USB
 ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
+
+#else
+
+// Defined an boot rom object that use SerialHost
+// Declare BootROM without IO0 and Reset will use SerialHost.setDtrRts() for bootloader reset
+// This is for programming ESP32/8266 via USB-to-UART chip such as FTDI/CP210x/CH9102f
+ESP32BootROMClass ESP32BootROM(SerialHost);
+
+#endif
+
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
