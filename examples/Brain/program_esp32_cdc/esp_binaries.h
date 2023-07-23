@@ -26,7 +26,7 @@
 #define ESP_BINARIES_H_
 
 // Configuration: select which bins to flash
-#define BIN_FILES BIN_FEATHER_ESP32_V2_BLINKY
+#define BIN_FILES BIN_DEVKIT_S3
 
 //--------------------------------------------------------------------+
 // LIST OF BINARIES
