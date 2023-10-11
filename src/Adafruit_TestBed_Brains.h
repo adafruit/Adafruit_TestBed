@@ -10,17 +10,6 @@
 #include "Adafruit_DAP.h"
 #include "Adafruit_TinyUSB.h"
 
-#include "ESP32BootROM.h"
-#include "MD5Builder.h"
-
-typedef struct {
-  const char *name;
-  const uint8_t *data;
-  const uint32_t compressed_len;
-  const uint32_t uncompressed_len;
-  const uint8_t md5[16];
-} esp32_zipfile_t;
-
 /**************************************************************************/
 /*!
     @brief A helper class for making RP2040 "Tester Brains"
@@ -60,7 +49,6 @@ public:
   bool usbh_umountFS(uint8_t dev_addr);
 
   // Target
-  void targetReset(uint32_t reset_ms = 20);
 
   //--------------------------------------------------------------------+
   // RP2040 Target
@@ -89,23 +77,6 @@ public:
   size_t dap_programFlash(const char *fpath, uint32_t addr);
 
   //--------------------------------------------------------------------+
-  // ESP32 Target
-  //--------------------------------------------------------------------+
-
-  bool esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
-  void esp32_end(bool reset_esp = false);
-
-  // program esp32 target with file from SDCard
-  // return number of programmed bytes
-  size_t esp32_programFlash(const char *fpath, uint32_t addr);
-
-  // program flash with compressed using zipfile struct
-  size_t esp32_programFlashDefl(const esp32_zipfile_t *zfile, uint32_t addr);
-
-  bool esp32_s3_inReset(void);
-  void esp32_s3_clearReset(void);
-
-  //--------------------------------------------------------------------+
   // Public Variables
   //--------------------------------------------------------------------+
 
@@ -123,11 +94,6 @@ public:
   // Dap
   Adafruit_DAP *dap;
 
-  // ESP32 ROM
-  ESP32BootROMClass *esp32boot;
-
-  int _target_rst;
-
 private:
   bool _inited;
   uint8_t _lcd_line;
@@ -139,10 +105,6 @@ private:
 
   int _target_swdio;
   int _target_swdclk;
-
-  bool _esp32_flash_defl;
-  uint32_t _esp32_chip_detect;
-  bool _esp32s3_in_reset;
 
   void lcd_write(uint8_t linenum, char buf[17]);
 };
