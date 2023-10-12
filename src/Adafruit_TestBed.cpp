@@ -489,6 +489,13 @@ void Adafruit_TestBed::esp32_s3_clearReset(void) { _esp32s3_in_reset = false; }
 size_t
 Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
                                                uint32_t addr, File32 *fsrc) {
+  // skip avr core
+#ifdef ARDUINO_ARCH_AVR
+  (void)zfile;
+  (void)addr;
+  (void)fsrc;
+  return 0;
+#else
   if (!esp32boot) {
     return 0;
   }
@@ -610,6 +617,7 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   }
 
   return zfile->uncompressed_len;
+#endif // ARDUINO_ARCH_AVR
 }
 size_t Adafruit_TestBed::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
                                                 uint32_t addr) {
