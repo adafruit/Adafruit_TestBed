@@ -6,6 +6,7 @@
 #include "Wire.h"
 
 #include "ESP32BootROM.h"
+#include "SdFat.h"
 
 #define RED 0xFF0000
 #define YELLOW 0xFFFF00
@@ -68,12 +69,12 @@ public:
   bool esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
   void esp32_end(bool reset_esp = false);
 
-  // program esp32 target with file from SDCard
-  // return number of programmed bytes
-  //  size_t esp32_programFlash(const char *fpath, uint32_t addr);
-
-  // program flash with compressed using zipfile struct
+  // program esp32 target with compressed data stored in internal flash
   size_t esp32_programFlashDefl(const esp32_zipfile_t *zfile, uint32_t addr);
+
+  // program esp32 target with compressed file from SDCard
+  size_t esp32_programFlashDefl(const esp32_zipfile_t *zfile, uint32_t addr,
+                                File32 *fsrc);
 
   bool esp32_s3_inReset(void);
   void esp32_s3_clearReset(void);
@@ -106,6 +107,9 @@ private:
   bool _esp32_flash_defl;
   uint32_t _esp32_chip_detect;
   bool _esp32s3_in_reset;
+
+  size_t _esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
+                                      uint32_t addr, File32 *fsrc);
 };
 
 extern Adafruit_TestBed TB;

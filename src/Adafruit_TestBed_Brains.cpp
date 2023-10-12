@@ -136,7 +136,6 @@ bool Adafruit_TestBed_Brains::inited(void) { return _inited; }
 void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin,
                                                         uint32_t reset_ms) {
   pinMode(bootsel_pin, OUTPUT);
-
   digitalWrite(bootsel_pin, LOW);
 
   targetReset(reset_ms);

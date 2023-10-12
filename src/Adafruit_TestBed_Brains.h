@@ -3,8 +3,9 @@
 
 #ifdef ARDUINO_RASPBERRY_PI_PICO
 
-#include "Adafruit_TestBed.h"
 #include "SdFat.h"
+
+#include "Adafruit_TestBed.h"
 #include <LiquidCrystal.h>
 
 #include "Adafruit_DAP.h"
