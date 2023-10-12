@@ -486,16 +486,16 @@ bool Adafruit_TestBed::esp32_s3_inReset(void) { return _esp32s3_in_reset; }
 
 void Adafruit_TestBed::esp32_s3_clearReset(void) { _esp32s3_in_reset = false; }
 
+static void print_buf(uint8_t const *buf, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    Serial.print(buf[i], HEX);
+  }
+  Serial.println();
+}
+
 size_t
 Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
                                                uint32_t addr, File32 *fsrc) {
-  // skip avr core
-#ifdef ARDUINO_ARCH_AVR
-  (void)zfile;
-  (void)addr;
-  (void)fsrc;
-  return 0;
-#else
   if (!esp32boot) {
     return 0;
   }
@@ -505,11 +505,8 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
 
 #if 1 // change to 0 to skip pre-flash md5 check for testing
   esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
-  Serial.printf("Flash MD5: ");
-  for (size_t i = 0; i < 16; i++) {
-    Serial.printf("%02X ", esp_md5[i]);
-  }
-  Serial.println();
+  Serial.print("Flash MD5: ");
+  print_buf(esp_md5, 16);
   if (0 == memcmp(zfile->md5, esp_md5, 16)) {
     Serial.println("MD5 matched");
     return zfile->uncompressed_len;
@@ -525,13 +522,16 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   if (use_sdcard) {
     buf = (uint8_t *)malloc(block_size);
     if (!buf) {
-      Serial.printf("No memory %lu\n", block_size);
+      Serial.print("No memory ");
+      Serial.println(block_size);
       return 0;
     }
   }
 
-  Serial.printf("Compressed %lu bytes to %lu\r\n", zfile->uncompressed_len,
-                zfile->compressed_len);
+  Serial.print("Compressed ");
+  Serial.print(zfile->uncompressed_len);
+  Serial.print(" bytes to ");
+  Serial.println(zfile->compressed_len);
 
   if (!esp32boot->beginFlashDefl(addr, zfile->uncompressed_len,
                                  zfile->compressed_len)) {
@@ -550,7 +550,11 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   uint32_t const block_num = div_ceil(zfile->compressed_len, block_size);
   for (uint32_t i = 0; i < block_num; i++) {
     setLED(HIGH);
-    Serial.printf("Pckt %lu/%lu", i + 1, block_num);
+    // Serial.print("Pckt %lu/%lu", i + 1, block_num);
+    Serial.print("Packet ");
+    Serial.print(i + 1);
+    Serial.print("/");
+    Serial.println(block_num);
 
     uint32_t const remain = zfile->compressed_len - written;
     uint32_t const wr_count = (remain < block_size) ? remain : block_size;
@@ -599,17 +603,11 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   } else {
     Serial.println("MD5 mismatched!!");
 
-    Serial.printf("File: ");
-    for (size_t i = 0; i < 16; i++) {
-      Serial.printf("%02X ", zfile->md5[i]);
-    }
-    Serial.println();
+    Serial.print("File: ");
+    print_buf(zfile->md5, 16);
 
-    Serial.printf("ESP : ");
-    for (size_t i = 0; i < 16; i++) {
-      Serial.printf("%02X ", esp_md5[i]);
-    }
-    Serial.println();
+    Serial.print("ESP : ");
+    print_buf(esp_md5, 16);
   }
 
   if (buf) {
@@ -617,7 +615,6 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   }
 
   return zfile->uncompressed_len;
-#endif // ARDUINO_ARCH_AVR
 }
 size_t Adafruit_TestBed::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
                                                 uint32_t addr) {
