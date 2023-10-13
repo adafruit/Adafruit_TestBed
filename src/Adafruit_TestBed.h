@@ -5,6 +5,9 @@
 #include "Arduino.h"
 #include "Wire.h"
 
+#include "ESP32BootROM.h"
+#include "SdFat.h"
+
 #define RED 0xFF0000
 #define YELLOW 0xFFFF00
 #define GREEN 0x00FF00
@@ -12,6 +15,14 @@
 #define TEAL 0x00FFFF
 #define PURPLE 0xFF00FF
 #define WHITE 0xFFFFFF
+
+typedef struct {
+  const char *name;
+  const uint8_t *data;
+  const uint32_t compressed_len;
+  const uint32_t uncompressed_len;
+  const uint8_t md5[16];
+} esp32_zipfile_t;
 
 /**************************************************************************/
 /*!
@@ -33,6 +44,8 @@ public:
   void targetPower(bool on);
   void targetPowerCycle(uint16_t off_time = 10);
 
+  void targetReset(uint32_t reset_ms = 20);
+
   float readAnalogVoltage(uint16_t pin, float multiplier = 1);
   bool testAnalogVoltage(uint16_t pin, const char *name, float multiplier,
                          float value);
@@ -50,6 +63,24 @@ public:
   uint32_t timestamp(void);
   void printTimeTaken(bool restamp = false);
 
+  //--------------------------------------------------------------------+
+  // ESP32 Target
+  //--------------------------------------------------------------------+
+  bool esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
+  void esp32_end(bool reset_esp = false);
+
+  // program esp32 target with compressed data stored in internal flash
+  size_t esp32_programFlashDefl(const esp32_zipfile_t *zfile, uint32_t addr);
+
+  // program esp32 target with compressed file from SDCard
+  size_t esp32_programFlashDefl(const esp32_zipfile_t *zfile, uint32_t addr,
+                                File32 *fsrc);
+
+  bool esp32_s3_inReset(void);
+  void esp32_s3_clearReset(void);
+
+  ESP32BootROMClass *esp32boot; // ESP32 ROM
+
   //////////////////
   TwoWire *theWire = &Wire;    ///< The I2C port used in scanning
   Stream *theSerial = &Serial; ///< The Serial port used for debugging
@@ -59,6 +90,8 @@ public:
 
   int16_t targetPowerPin = -1;     ///< Set to a target power pin if used
   bool targetPowerPolarity = HIGH; ///< What to set the power pin to, for ON
+
+  int targetResetPin = -1; ///< Set to target reset pin if used
 
   int16_t neopixelPin = -1; ///< The neopixel connected pin if any
   uint8_t neopixelNum = 0;  ///< How many neopixels are on board, if any
@@ -70,6 +103,15 @@ public:
 
 private:
   uint32_t millis_timestamp = 0; ///< A general purpose timestamp
+
+  bool _esp32_flash_defl;
+  uint32_t _esp32_chip_detect;
+  bool _esp32s3_in_reset;
+
+  size_t _esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
+                                      uint32_t addr, File32 *fsrc);
 };
+
+extern Adafruit_TestBed TB;
 
 #endif
