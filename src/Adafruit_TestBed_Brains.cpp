@@ -260,10 +260,6 @@ bool Adafruit_TestBed_Brains::dap_connect(void) {
     LCD_printf(0, "Unknown MCU");
     LCD_printf(1, "ID = %08X", dsu_did);
 
-    while (1) {
-      delay(1);
-    }
-
     return false;
   }
 

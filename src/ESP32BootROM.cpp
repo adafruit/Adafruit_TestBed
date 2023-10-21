@@ -20,7 +20,7 @@
 */
 
 #if defined(ARDUINO_RASPBERRY_PI_PICO) || defined(__SAMD51__) ||               \
-    (defined(ARDUINO_ARCH_SAMD) && defined(ARM_MATH_CM0PLUS))
+    (defined(ARDUINO_ARCH_SAMD) && defined(ARM_MATH_CM0PLUS)) 
 
 #include "ESP32BootROM.h"
 #include "stub_esp32.h"
@@ -196,7 +196,7 @@ void ESP32BootROMClass::resetBootloader(void) {
     // IO0 high: done
     digitalWrite(_gpio0Pin, HIGH);
   }
-#ifdef USE_TINYUSB
+#if defined(USE_TINYUSB) && defined(ARDUINO_RASPBERRY_PI_PICO)
   else {
     // Serial Host using setDtrRts()
     // - DTR -> IO0
