@@ -21,6 +21,10 @@
 // bin_files[] is defined accordingly
 #include "esp_binaries.h"
 
+// 1 if programming ESP32-S2/S3 via native USB
+// 0 if programming ESP32/8266 via USB-to-UART chip such as FTDI/CP210x/CH9102f
+#define ESP32_NATIVE_USB 1
+
 #define ESP32_RESET     27
 #define ESP32_IO0       28
 
@@ -31,14 +35,21 @@
 // CDC Host object
 Adafruit_USBH_CDC  SerialHost;
 
+#if ESP32_NATIVE_USB
+
+// Declare BootROM with IO0 and Reset will use GPIO for bootloader reset
+// This is typically for programming ESP32-S2/S3 via native USB
+ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
+
+#else
+
 // Defined an boot rom object that use SerialHost
 // Declare BootROM without IO0 and Reset will use SerialHost.setDtrRts() for bootloader reset
 // This is for programming ESP32/8266 via USB-to-UART chip such as FTDI/CP210x/CH9102f
 ESP32BootROMClass ESP32BootROM(SerialHost);
 
-// Declare BootROM with IO0 and Reset will use GPIO for bootloader reset
-// This is typically for programming ESP32-S2/S3 via native USB
-// ESP32BootROMClass ESP32BootROM(SerialHost, ESP32_IO0, ESP32_RESET);
+#endif
+
 
 //--------------------------------------------------------------------+
 // Setup and Loop on Core0
@@ -117,6 +128,19 @@ void setup1() {
 
 // core1's loop: process usb host task on core1
 void loop1() {
+  if ( Brain.esp32_s3_inReset() ){
+    // Note: S3 has an USB-OTG errata
+    // https://www.espressif.com/sites/default/files/documentation/esp32-s3_errata_en.pdf
+    // which is walkarounded by idf/arduino-esp32 to always mux JTAG to USB for
+    // uploading and/or power on. Afterwards USB-OTG will be set up if selected
+    // so. However rp2040 USBH is running too fast and can actually retrieve
+    // device/configuration descriptor of JTAG before the OTG is fully setup.
+    // We delay a bit here
+    delay(500);
+
+    Brain.esp32_s3_clearReset();
+  }
+
   Brain.USBHost.task();
 
   // periodically flush SerialHost if connected

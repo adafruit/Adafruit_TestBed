@@ -65,10 +65,6 @@ private:
   uint32_t crc;
 };
 
-static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
-  return (v + d - 1) / d;
-}
-
 /**************************************************************************/
 /*!
     @brief  Initializer, sets up the timestamp, neopixels, piezo, led,
@@ -94,16 +90,11 @@ Adafruit_TestBed_Brains::Adafruit_TestBed_Brains() {
   _usbh_dp_pin = 20; // USB Host D+
   _vbus_en_pin = 22; // USB Host VBus enable
 
-  _target_rst = 27;
+  targetResetPin = 27;
   _target_swdio = 2;
   _target_swdclk = 3;
 
   dap = NULL;
-
-  esp32boot = NULL;
-  _esp32_flash_defl = false;
-  _esp32_chip_detect = 0;
-  _esp32s3_in_reset = false;
 }
 
 void Adafruit_TestBed_Brains::begin(void) {
@@ -115,8 +106,8 @@ void Adafruit_TestBed_Brains::begin(void) {
   neopixelNum = 1;
   pinMode(neopixelPin, OUTPUT);
 
-  pinMode(_target_rst, OUTPUT);
-  digitalWrite(_target_rst, HIGH);
+  pinMode(targetResetPin, OUTPUT);
+  digitalWrite(targetResetPin, HIGH);
 
   pinMode(_sd_detect_pin, INPUT_PULLUP);
   pinMode(_vbus_en_pin, OUTPUT);
@@ -138,23 +129,6 @@ void Adafruit_TestBed_Brains::begin(void) {
 
 bool Adafruit_TestBed_Brains::inited(void) { return _inited; }
 
-void Adafruit_TestBed_Brains::targetReset(uint32_t reset_ms) {
-  digitalWrite(_target_rst, LOW);
-  delay(reset_ms);
-  digitalWrite(_target_rst, HIGH);
-
-  // Note: S3 has an USB-OTG errata
-  // https://www.espressif.com/sites/default/files/documentation/esp32-s3_errata_en.pdf
-  // which is walkarounded by idf/arduino-esp32 to always mux JTAG to USB for
-  // uploading and/or power on. Afterwards USB-OTG will be set up if selected
-  // so. However rp2040 USBH is running too fast and can actually retrieve
-  // device/configuration descriptor of JTAG before the OTG is fully setup.
-  // Mark this for application usage
-  if (_esp32_chip_detect == CHIP_DETECT_MAGIC_ESP32S3) {
-    _esp32s3_in_reset = true;
-  }
-}
-
 //--------------------------------------------------------------------+
 // RP2040 Target
 //--------------------------------------------------------------------+
@@ -162,7 +136,6 @@ void Adafruit_TestBed_Brains::targetReset(uint32_t reset_ms) {
 void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin,
                                                         uint32_t reset_ms) {
   pinMode(bootsel_pin, OUTPUT);
-
   digitalWrite(bootsel_pin, LOW);
 
   targetReset(reset_ms);
@@ -240,7 +213,7 @@ bool Adafruit_TestBed_Brains::dap_begin(Adafruit_DAP *dp) {
 
   dap = dp;
 
-  return dap->begin(_target_swdclk, _target_swdio, _target_rst,
+  return dap->begin(_target_swdclk, _target_swdio, targetResetPin,
                     dap_err_hanlder);
 }
 
@@ -405,239 +378,6 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
   fsrc.close();
 
   return fsize;
-}
-
-//--------------------------------------------------------------------+
-// ESP32 Target
-//--------------------------------------------------------------------+
-
-bool Adafruit_TestBed_Brains::esp32_begin(ESP32BootROMClass *bootrom,
-                                          uint32_t baudrate) {
-  esp32boot = bootrom;
-
-  LCD_printf("Syncing ESP32");
-  _esp32_chip_detect = esp32boot->begin(baudrate);
-
-  if (_esp32_chip_detect) {
-    setColor(0xFFFFFF);
-    LCD_printf("Synced OK");
-    return true;
-  } else {
-    LCD_printf_error("Sync failed!");
-    return false;
-  }
-}
-
-void Adafruit_TestBed_Brains::esp32_end(bool reset_esp) {
-  if (esp32boot->isRunningStub()) {
-    // skip sending flash_finish to ROM loader here,
-    // as it causes the loader to exit and run user code
-    esp32boot->beginFlash(0, 0, esp32boot->getFlashWriteSize());
-
-    if (_esp32_flash_defl) {
-      esp32boot->endFlashDefl(reset_esp);
-    } else {
-      esp32boot->endFlash(reset_esp);
-    }
-  }
-
-  esp32boot->end();
-}
-
-bool Adafruit_TestBed_Brains::esp32_s3_inReset(void) {
-  return _esp32s3_in_reset;
-}
-
-void Adafruit_TestBed_Brains::esp32_s3_clearReset(void) {
-  _esp32s3_in_reset = false;
-}
-
-size_t
-Adafruit_TestBed_Brains::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
-                                                uint32_t addr) {
-  if (!esp32boot) {
-    return 0;
-  }
-
-  // Check if MD5 matches to skip this file
-  uint8_t esp_md5[16];
-
-#if 1 // change to 0 to skip pre-flash md5 check for testing
-  esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
-  Serial.printf("Flash MD5: ");
-  for (size_t i = 0; i < 16; i++) {
-    Serial.printf("%02X ", esp_md5[i]);
-  }
-  Serial.println();
-  if (0 == memcmp(zfile->md5, esp_md5, 16)) {
-    LCD_printf(2, "MD5 matched");
-    return zfile->uncompressed_len;
-  }
-#endif
-
-  // Write Size is different depending on ROM (1K) or Stub (16KB)
-  uint32_t const block_size = esp32boot->getFlashWriteSize();
-
-  Serial.printf("Compressed %lu bytes to %lu\r\n", zfile->uncompressed_len,
-                zfile->compressed_len);
-
-  if (!esp32boot->beginFlashDefl(addr, zfile->uncompressed_len,
-                                 zfile->compressed_len)) {
-    LCD_printf_error("beginFlash failed!");
-  } else {
-    _esp32_flash_defl = true;
-
-    uint32_t const block_num = div_ceil(zfile->compressed_len, block_size);
-
-    //------------- Flashing  -------------//
-    uint8_t const *data = zfile->data;
-    uint32_t remain = zfile->compressed_len;
-
-    for (uint32_t i = 0; i < block_num; i++) {
-      setLED(HIGH);
-      LCD_printf(1, "Pckt %u/%u", i + 1, block_num);
-
-      uint32_t const wr_count = MIN(block_size, remain);
-
-      // Note: flash deflat does not need padding
-      if (!esp32boot->dataFlashDefl(data, wr_count)) {
-        LCD_printf_error("Failed to flash");
-        break;
-      }
-
-      setLED(LOW);
-
-      data += wr_count;
-      remain -= wr_count;
-    }
-    Serial.println();
-
-    // Stub only writes each block to flash after 'ack'ing the receive,
-    // so do a final dummy operation which will not be 'ack'ed
-    // until the last block has actually been written out to flash
-    if (esp32boot->isRunningStub()) {
-      Serial.println("Dummy read chip detect after final block");
-      (void)esp32boot->read_chip_detect();
-    }
-
-    //------------- MD5 verification -------------//
-    Serial.println("Verifying MD5");
-    esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
-
-    if (0 == memcmp(zfile->md5, esp_md5, 16)) {
-      LCD_printf(2, "MD5 matched");
-    } else {
-      LCD_error(NULL, "MD5 mismatched!!");
-
-      Serial.printf("File: ");
-      for (size_t i = 0; i < 16; i++) {
-        Serial.printf("%02X ", zfile->md5[i]);
-      }
-      Serial.println();
-
-      Serial.printf("ESP : ");
-      for (size_t i = 0; i < 16; i++) {
-        Serial.printf("%02X ", esp_md5[i]);
-      }
-      Serial.println();
-    }
-  }
-
-  return zfile->uncompressed_len;
-}
-
-size_t Adafruit_TestBed_Brains::esp32_programFlash(const char *fpath,
-                                                   uint32_t addr) {
-  if (!esp32boot) {
-    return 0;
-  }
-
-  // Write Size is different depending on ROM (1K) or Stub (16KB)
-  uint32_t const block_size = esp32boot->getFlashWriteSize();
-  uint8_t *buf = (uint8_t *)malloc(block_size);
-  if (!buf) {
-    LCD_printf_error("No memory %u\n", block_size);
-    return 0;
-  }
-
-  File32 fsrc = SD.open(fpath);
-  if (!fsrc) {
-    Serial.printf("SD: cannot open file: %s\r\n", fpath);
-    return 0;
-  }
-  uint32_t fsize = fsrc.fileSize();
-  uint32_t total_count = 0;
-
-  Serial.printf("fsize = %lu, block size = %lu\r\n", fsize, block_size);
-
-  if (!esp32boot->beginFlash(addr, fsize, block_size)) {
-    LCD_printf_error("beginFlash failed!");
-  } else {
-    LCD_printf("#Packets %u", div_ceil(fsize, block_size));
-
-    MD5Builder md5;
-    md5.begin();
-
-    //------------- Flashing  -------------//
-    while (fsrc.available()) {
-      memset(buf, 0xff, block_size); // empty it out
-      uint32_t const rd_count = fsrc.read(buf, block_size);
-
-      setLED(HIGH);
-      Serial.printf("#");
-
-      if (!esp32boot->dataFlash(buf, block_size)) {
-        LCD_printf_error("Failed to flash");
-        break;
-      }
-
-      setLED(LOW);
-
-      md5.add(buf, rd_count);
-      total_count += rd_count;
-    }
-    Serial.println();
-
-    // Stub only writes each block to flash after 'ack'ing the receive,
-    // so do a final dummy operation which will not be 'ack'ed
-    // until the last block has actually been written out to flash
-    if (esp32boot->isRunningStub()) {
-      (void)esp32boot->read_chip_detect();
-    }
-
-    //------------- MD5 verification -------------//
-    md5.calculate();
-    Serial.printf("md5 = %s\r\n", md5.toString().c_str());
-
-    uint8_t file_md5[16];
-    md5.getBytes(file_md5);
-
-    uint8_t esp_md5[16];
-    esp32boot->md5Flash(addr, fsize, esp_md5);
-
-    if (0 == memcmp(file_md5, esp_md5, 16)) {
-      LCD_printf("MD5 matched");
-    } else {
-      LCD_printf_error("MD5 mismatched!!");
-
-      Serial.printf("File: ");
-      for (size_t i = 0; i < 16; i++) {
-        Serial.printf("%02X ", file_md5[i]);
-      }
-      Serial.println();
-
-      Serial.printf("ESP : ");
-      for (size_t i = 0; i < 16; i++) {
-        Serial.printf("%02X ", esp_md5[i]);
-      }
-      Serial.println();
-    }
-  }
-
-  free(buf);
-  fsrc.close();
-
-  return total_count;
 }
 
 //--------------------------------------------------------------------+
