@@ -62,10 +62,10 @@ void setup() {
   // erase chip before programming
   Brain.dap_eraseChip();
 
-  // skip verify for nrf52840 since it does not have crc32 hardware,
-  // and take too long to read the whole flash
+  // for nrf52840 don't use crc32 as it is not supported.
+  // Note: verify is with reading back increase programming time by 2x
   uint32_t ms = millis();
-  size_t copied_bytes = Brain.dap_programFlash(TEST_FILE_PATH, 0, false);
+  size_t copied_bytes = Brain.dap_programFlash(TEST_FILE_PATH, 0, true, false);
   ms = millis() - ms;
   print_speed(copied_bytes, ms);
 

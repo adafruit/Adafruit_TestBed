@@ -307,8 +307,8 @@ bool Adafruit_TestBed_Brains::dap_eraseChip(void) {
 }
 
 size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
-                                                 uint32_t addr,
-                                                 bool do_verify) {
+                                                 uint32_t addr, bool do_verify,
+                                                 bool do_crc32) {
   if (!dap) {
     return 0;
   }
@@ -364,23 +364,30 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
 
     setLED(HIGH);
 
-    dap->programBlock(addr_tmp, buf, bufsize);
-    addr_tmp += bufsize;
+    // don't verify each write if we use crc32
+    if (!dap->programFlash(addr_tmp, buf, bufsize, !do_crc32 && do_verify)) {
+      Serial.printf("Failed to program block at %08lX\n", addr_tmp);
+      free(buf);
+      fsrc.close();
+      return addr_tmp - addr;
+    }
 
-    if (do_verify) {
+    if (do_crc32) {
       crc32.add(buf, rd_count);
     }
+
+    addr_tmp += bufsize;
 
     setLED(LOW);
   }
 
   Serial.printf("Programming end, t = %lu ms\r\n", millis(), millis() - ms);
 
-  if (do_verify) {
+  if (do_crc32) {
     ms = millis();
-    Serial.printf("Verify start\r\n", ms);
+    Serial.printf("CRC32 start\r\n", ms);
     uint32_t target_crc = dap->computeFlashCRC32(addr, fsize);
-    Serial.printf("Verify end, t = %lu ms\r\n", millis(), millis() - ms);
+    Serial.printf("CRC32 end, t = %lu ms\r\n", millis(), millis() - ms);
 
     if (target_crc != crc32.get()) {
       LCD_printf("CRC Failed");

@@ -73,8 +73,9 @@ public:
 
   // program dap target with file from SDCard
   // return number of programmed bytes
+  // Note: if do_crc32 is false, we will verify each write by reading back
   size_t dap_programFlash(const char *fpath, uint32_t addr,
-                          bool do_verify = true);
+                          bool do_verify = true, bool do_crc32 = true);
 
   // read dap target flash to file on SDCard
   size_t dap_readFlash(const char *fpath, uint32_t addr, size_t size);
