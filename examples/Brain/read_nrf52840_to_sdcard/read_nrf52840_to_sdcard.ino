@@ -38,7 +38,7 @@ void print_speed(size_t count, uint32_t ms) {
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
-  Serial.println("Tester Brains: nRF52840 programming !");
+  Serial.println("Tester Brains: Reading nRF52840 to SD Card!");
 
   // sync: wait for Brain.usbh_begin() called in core1 before accessing SD or other peripherals
   while (!Brain.usbh_inited()) delay(10);
