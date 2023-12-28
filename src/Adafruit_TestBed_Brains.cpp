@@ -266,9 +266,9 @@ bool Adafruit_TestBed_Brains::dap_unprotectBoot(void) {
     return false;
   }
 
-  LCD_printf("Unlock chip...");
+  Serial.println("Unlock chip...");
   bool ret = dap->unprotectBoot();
-  LCD_printf(ret ? "OK" : "Failed");
+  Serial.println(ret ? "OK" : "Failed");
   return ret;
 }
 
@@ -277,9 +277,9 @@ bool Adafruit_TestBed_Brains::dap_protectBoot(void) {
     return false;
   }
 
-  LCD_printf("Lock chip...");
+  Serial.println("Lock chip...");
   bool ret = dap->protectBoot();
-  LCD_printf(ret ? "OK" : "Failed");
+  Serial.println(ret ? "OK" : "Failed");
   return ret;
 }
 
@@ -300,14 +300,15 @@ bool Adafruit_TestBed_Brains::dap_eraseChip(void) {
     dap->erase();
 
     ms = millis() - ms;
-    LCD_printf("done in %.02fs", ms / 1000.0F);
+    LCD_printf("Erased in %.02fs", ms / 1000.0F);
   }
 
   return true;
 }
 
 size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
-                                                 uint32_t addr) {
+                                                 uint32_t addr,
+                                                 bool do_verify) {
   if (!dap) {
     return 0;
   }
@@ -350,7 +351,8 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
     return 0;
   }
 
-  LCD_printf("Programming..");
+  LCD_printf("Programming...");
+  uint32_t ms = millis();
 
   BrainCRC32 crc32;
   dap->program_start(addr, fsize);
@@ -358,22 +360,35 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
   uint32_t addr_tmp = addr;
   while (fsrc.available()) {
     memset(buf, 0xff, bufsize); // empty it out
-
     uint32_t rd_count = fsrc.read(buf, bufsize);
 
     setLED(HIGH);
-    dap->programBlock(addr_tmp, buf, bufsize);
-    crc32.add(buf, rd_count);
-    setLED(LOW);
 
+    dap->programBlock(addr_tmp, buf, bufsize);
     addr_tmp += bufsize;
+
+    if (do_verify) {
+      crc32.add(buf, rd_count);
+    }
+
+    setLED(LOW);
   }
 
-  uint32_t target_crc = dap->computeFlashCRC32(addr, fsize);
+  Serial.printf("Programming end, t = %lu ms\r\n", millis(), millis() - ms);
 
-  if (target_crc != crc32.get()) {
-    LCD_printf("CRC Failed");
-    Serial.printf("CRC mismtached: %08lX != %08lX\n", crc32.get(), target_crc);
+  if (do_verify) {
+    ms = millis();
+    Serial.printf("Verify start\r\n", ms);
+    uint32_t target_crc = dap->computeFlashCRC32(addr, fsize);
+    Serial.printf("Verify end, t = %lu ms\r\n", millis(), millis() - ms);
+
+    if (target_crc != crc32.get()) {
+      LCD_printf("CRC Failed");
+      Serial.printf("CRC mismtached: %08lX != %08lX\n", crc32.get(),
+                    target_crc);
+    } else {
+      LCD_printf("Done!");
+    }
   } else {
     LCD_printf("Done!");
   }
@@ -586,6 +601,12 @@ void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1,
 
 void Adafruit_TestBed_Brains::usbh_setVBus(bool en) {
   digitalWrite(_vbus_en_pin, en ? HIGH : LOW);
+}
+
+void Adafruit_TestBed_Brains::usbh_VBusCycle(uint32_t off_time) {
+  usbh_setVBus(false);
+  delay(off_time);
+  usbh_setVBus(true);
 }
 
 bool Adafruit_TestBed_Brains::usbh_begin(void) {

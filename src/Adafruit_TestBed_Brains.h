@@ -49,8 +49,6 @@ public:
   bool usbh_mountFS(uint8_t dev_addr);
   bool usbh_umountFS(uint8_t dev_addr);
 
-  // Target
-
   //--------------------------------------------------------------------+
   // RP2040 Target
   //--------------------------------------------------------------------+
@@ -75,7 +73,8 @@ public:
 
   // program dap target with file from SDCard
   // return number of programmed bytes
-  size_t dap_programFlash(const char *fpath, uint32_t addr);
+  size_t dap_programFlash(const char *fpath, uint32_t addr,
+                          bool do_verify = true);
 
   //--------------------------------------------------------------------+
   // Public Variables
