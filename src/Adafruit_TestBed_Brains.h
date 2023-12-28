@@ -76,6 +76,9 @@ public:
   size_t dap_programFlash(const char *fpath, uint32_t addr,
                           bool do_verify = true);
 
+  // read dap target flash to file on SDCard
+  size_t dap_readFlash(const char *fpath, uint32_t addr, size_t size);
+
   //--------------------------------------------------------------------+
   // Public Variables
   //--------------------------------------------------------------------+

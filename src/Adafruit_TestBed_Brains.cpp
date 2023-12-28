@@ -399,6 +399,49 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
   return fsize;
 }
 
+size_t Adafruit_TestBed_Brains::dap_readFlash(const char *fpath, uint32_t addr,
+                                              size_t size) {
+  if (!dap) {
+    return 0;
+  }
+
+  size_t bufsize = 4096;
+  uint8_t *buf = (uint8_t *)malloc(bufsize);
+  if (!buf) {
+    return 0;
+  }
+
+  File32 fsrc = SD.open(fpath, O_CREAT | O_WRONLY);
+  if (!fsrc) {
+    Serial.printf("SD: cannot open file: %s\r\n", fpath);
+    return 0;
+  }
+
+  LCD_printf("Reading...");
+
+  size_t remain = size;
+  while (remain) {
+    uint32_t count = min(remain, bufsize);
+
+    setLED(HIGH);
+    if (!dap->dap_read_block(addr, buf, (int)count)) {
+      Serial.printf("Failed to read block at %08lX\n", addr);
+      break;
+    }
+    setLED(LOW);
+
+    fsrc.write(buf, count);
+
+    addr += count;
+    remain -= count;
+  }
+
+  fsrc.close();
+  LCD_printf("Done!");
+
+  return size - remain;
+}
+
 //--------------------------------------------------------------------+
 // SD Card
 //--------------------------------------------------------------------+
@@ -601,12 +644,6 @@ void Adafruit_TestBed_Brains::LCD_error(const char *errmsg1,
 
 void Adafruit_TestBed_Brains::usbh_setVBus(bool en) {
   digitalWrite(_vbus_en_pin, en ? HIGH : LOW);
-}
-
-void Adafruit_TestBed_Brains::usbh_VBusCycle(uint32_t off_time) {
-  usbh_setVBus(false);
-  delay(off_time);
-  usbh_setVBus(true);
 }
 
 bool Adafruit_TestBed_Brains::usbh_begin(void) {
