@@ -17,8 +17,9 @@
 
 #include "Adafruit_TestBed_Brains.h"
 
-// file path on SDCard to program
-#define TEST_FILE_PATH "nrf/feather_nrf52840/bleblink.bin"
+// file path on SDCard to hold nrf52840 binary
+#define READ_FILE_PATH "nrf/readback.bin"
+#define READ_SIZE (1024u*1024u) // 1 MB
 
 // DAP interface for nRF5x
 Adafruit_DAP_nRF5x dap;
@@ -37,7 +38,7 @@ void print_speed(size_t count, uint32_t ms) {
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
-  Serial.println("Tester Brains: nRF52840 programming !");
+  Serial.println("Tester Brains: Reading nRF52840 to SD Card!");
 
   // sync: wait for Brain.usbh_begin() called in core1 before accessing SD or other peripherals
   while (!Brain.usbh_inited()) delay(10);
@@ -53,25 +54,15 @@ void setup() {
   }
 
   Brain.targetReset();
-
   Brain.dap_begin(&dap);
   Brain.dap_connect();
 
-  Brain.dap_unprotectBoot();
-
-  // erase chip before programming
-  Brain.dap_eraseChip();
-
-  // for nrf52840 don't use crc32 as it is not supported.
-  // Note: verify is with reading back increase programming time by 2x
   uint32_t ms = millis();
-  size_t copied_bytes = Brain.dap_programFlash(TEST_FILE_PATH, 0, true, false);
+  size_t nbytes = Brain.dap_readFlash(READ_FILE_PATH, 0, READ_SIZE);
   ms = millis() - ms;
-  print_speed(copied_bytes, ms);
+  print_speed(nbytes, ms);
 
-  Brain.dap_protectBoot();
   Brain.dap_disconnect();
-
   Brain.targetReset();
 
 }

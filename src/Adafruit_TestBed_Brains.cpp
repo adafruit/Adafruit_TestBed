@@ -266,9 +266,9 @@ bool Adafruit_TestBed_Brains::dap_unprotectBoot(void) {
     return false;
   }
 
-  LCD_printf("Unlock chip...");
+  Serial.println("Unlock chip...");
   bool ret = dap->unprotectBoot();
-  LCD_printf(ret ? "OK" : "Failed");
+  Serial.println(ret ? "OK" : "Failed");
   return ret;
 }
 
@@ -277,9 +277,9 @@ bool Adafruit_TestBed_Brains::dap_protectBoot(void) {
     return false;
   }
 
-  LCD_printf("Lock chip...");
+  Serial.println("Lock chip...");
   bool ret = dap->protectBoot();
-  LCD_printf(ret ? "OK" : "Failed");
+  Serial.println(ret ? "OK" : "Failed");
   return ret;
 }
 
@@ -300,14 +300,15 @@ bool Adafruit_TestBed_Brains::dap_eraseChip(void) {
     dap->erase();
 
     ms = millis() - ms;
-    LCD_printf("done in %.02fs", ms / 1000.0F);
+    LCD_printf("Erased in %.02fs", ms / 1000.0F);
   }
 
   return true;
 }
 
 size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
-                                                 uint32_t addr) {
+                                                 uint32_t addr, bool do_verify,
+                                                 bool do_crc32) {
   if (!dap) {
     return 0;
   }
@@ -350,7 +351,8 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
     return 0;
   }
 
-  LCD_printf("Programming..");
+  LCD_printf("Programming...");
+  uint32_t ms = millis();
 
   BrainCRC32 crc32;
   dap->program_start(addr, fsize);
@@ -358,22 +360,42 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
   uint32_t addr_tmp = addr;
   while (fsrc.available()) {
     memset(buf, 0xff, bufsize); // empty it out
-
     uint32_t rd_count = fsrc.read(buf, bufsize);
 
     setLED(HIGH);
-    dap->programBlock(addr_tmp, buf, bufsize);
-    crc32.add(buf, rd_count);
-    setLED(LOW);
+
+    // don't verify each write if we use crc32
+    if (!dap->programFlash(addr_tmp, buf, bufsize, !do_crc32 && do_verify)) {
+      Serial.printf("Failed to program block at %08lX\n", addr_tmp);
+      free(buf);
+      fsrc.close();
+      return addr_tmp - addr;
+    }
+
+    if (do_crc32) {
+      crc32.add(buf, rd_count);
+    }
 
     addr_tmp += bufsize;
+
+    setLED(LOW);
   }
 
-  uint32_t target_crc = dap->computeFlashCRC32(addr, fsize);
+  Serial.printf("Programming end, t = %lu ms\r\n", millis(), millis() - ms);
 
-  if (target_crc != crc32.get()) {
-    LCD_printf("CRC Failed");
-    Serial.printf("CRC mismtached: %08lX != %08lX\n", crc32.get(), target_crc);
+  if (do_crc32) {
+    ms = millis();
+    Serial.printf("CRC32 start\r\n", ms);
+    uint32_t target_crc = dap->computeFlashCRC32(addr, fsize);
+    Serial.printf("CRC32 end, t = %lu ms\r\n", millis(), millis() - ms);
+
+    if (target_crc != crc32.get()) {
+      LCD_printf("CRC Failed");
+      Serial.printf("CRC mismtached: %08lX != %08lX\n", crc32.get(),
+                    target_crc);
+    } else {
+      LCD_printf("Done!");
+    }
   } else {
     LCD_printf("Done!");
   }
@@ -382,6 +404,49 @@ size_t Adafruit_TestBed_Brains::dap_programFlash(const char *fpath,
   fsrc.close();
 
   return fsize;
+}
+
+size_t Adafruit_TestBed_Brains::dap_readFlash(const char *fpath, uint32_t addr,
+                                              size_t size) {
+  if (!dap) {
+    return 0;
+  }
+
+  size_t bufsize = 4096;
+  uint8_t *buf = (uint8_t *)malloc(bufsize);
+  if (!buf) {
+    return 0;
+  }
+
+  File32 fsrc = SD.open(fpath, O_CREAT | O_WRONLY);
+  if (!fsrc) {
+    Serial.printf("SD: cannot open file: %s\r\n", fpath);
+    return 0;
+  }
+
+  LCD_printf("Reading...");
+
+  size_t remain = size;
+  while (remain) {
+    uint32_t count = min(remain, bufsize);
+
+    setLED(HIGH);
+    if (!dap->dap_read_block(addr, buf, (int)count)) {
+      Serial.printf("Failed to read block at %08lX\n", addr);
+      break;
+    }
+    setLED(LOW);
+
+    fsrc.write(buf, count);
+
+    addr += count;
+    remain -= count;
+  }
+
+  fsrc.close();
+  LCD_printf("Done!");
+
+  return size - remain;
 }
 
 //--------------------------------------------------------------------+
