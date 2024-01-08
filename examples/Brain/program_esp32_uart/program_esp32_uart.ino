@@ -47,9 +47,8 @@ void setup() {
   while (!Serial) delay(10);
   Serial.println("Tester Brains: Programming ESP with UART!");
 
-  Brain.begin();
-  Brain.usbh_setVBus(true); // enable VBUS for power
-
+  // sync: wait for Brain.begin() called in core1 before accessing SD or other peripherals
+  while (!Brain.inited()) delay(10);
   while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
     // retry syncing
     delay(100);
@@ -76,4 +75,62 @@ void setup() {
 }
 
 void loop() {
+}
+
+//--------------------------------------------------------------------+
+// Setup and Loop on Core1
+//--------------------------------------------------------------------+
+
+// call usbh_begin() here to make pio usb background task run on core1
+// NOTE: Brain.begin() should be called here as well to prevent race condition
+void setup1() {
+  Brain.begin();
+  Brain.usbh_begin();
+
+  Brain.LCD_printf(0, "No USB attached");
+  Brain.LCD_printf(1, "Plug your device");
+}
+
+// core1's loop: process usb host task on core1
+void loop1() {
+  if ( Brain.esp32_s3_inReset() ){
+    // Note: S3 has an USB-OTG errata
+    // https://www.espressif.com/sites/default/files/documentation/esp32-s3_errata_en.pdf
+    // which is walkarounded by idf/arduino-esp32 to always mux JTAG to USB for
+    // uploading and/or power on. Afterwards USB-OTG will be set up if selected
+    // so. However rp2040 USBH is running too fast and can actually retrieve
+    // device/configuration descriptor of JTAG before the OTG is fully setup.
+    // We delay a bit here
+    delay(500);
+
+    Brain.esp32_s3_clearReset();
+  }
+
+  Brain.USBHost.task();
+  yield();
+}
+
+//--------------------------------------------------------------------+
+// TinyUSB Host callbacks
+// Note: running in the same core where Brain.USBHost.task() is called
+//--------------------------------------------------------------------+
+extern "C"  {
+
+// Invoked when device is mounted (configured)
+void tuh_mount_cb (uint8_t daddr)
+{
+  uint16_t vid, pid;
+  tuh_vid_pid_get(daddr, &vid, &pid);
+
+  Serial.printf("Device attached, address = %d\r\n", daddr);
+  Brain.LCD_printf("USBID %04x:%04x", vid, pid);
+}
+
+/// Invoked when device is unmounted (bus reset/unplugged)
+void tuh_umount_cb(uint8_t dev_addr)
+{
+  (void) dev_addr;
+  Brain.LCD_printf(1, "No USB Device");
+}
+
 }
