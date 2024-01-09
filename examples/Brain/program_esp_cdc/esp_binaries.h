@@ -26,7 +26,7 @@
 #define ESP_BINARIES_H_
 
 // Configuration: select which bins to flash
-#define BIN_FILES BIN_DEVKIT_S3
+#define BIN_FILES BIN_FEATHER_8266_BLINKY
 
 //--------------------------------------------------------------------+
 // LIST OF BINARIES
@@ -43,6 +43,8 @@
 
 #define BIN_DEVKIT_S2 20 // Espressif s2 devkit
 #define BIN_DEVKIT_S3 21 // Espressif s3 devkit
+
+#define BIN_FEATHER_8266_BLINKY 30 // Feather esp8266 blinky sketch
 
 //--------------------------------------------------------------------+
 // Binaries include
@@ -71,6 +73,9 @@
 
 #elif BIN_FILES == BIN_DEVKIT_S3
 #include "esp_binaries/esp32s3_devkit_binaries.h"
+
+#elif BIN_FILES == BIN_FEATHER_8266_BLINKY
+#include "esp_binaries/feather_esp8266_blinky.h"
 
 #endif
 
@@ -119,6 +124,12 @@ struct {
     {0x8000, &Blink_ino_partitions},
     {0xe000, &boot_app0},
     {0x10000, &Blink_ino},
+
+#elif BIN_FILES == BIN_FEATHER_8266_BLINKY
+    {0x0000, &Blink_ino},
+
+#else
+#error bin_files[] not defined
 #endif
 };
 
