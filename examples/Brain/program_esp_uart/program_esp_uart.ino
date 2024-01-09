@@ -49,7 +49,7 @@ void setup() {
 
   // sync: wait for Brain.begin() called in core1 before accessing SD or other peripherals
   while (!Brain.inited()) delay(10);
-  while ( !Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE) ) {
+  while (!Brain.esp32_begin(&ESP32BootROM, ESP32_BAUDRATE)) {
     // retry syncing
     delay(100);
   }
@@ -57,7 +57,7 @@ void setup() {
   // Writing bin files
   size_t total_bytes = 0;
   uint32_t ms = millis();
-  for(size_t i=0; i<BIN_FILES_COUNT; i++) {
+  for (size_t i = 0; i < BIN_FILES_COUNT; i++) {
     Brain.LCD_printf(0, "Flashing file %u", i);
     Serial.printf("File: %s\r\n", bin_files[i].zfile->name);
     size_t wr_count = Brain.esp32_programFlashDefl(bin_files[i].zfile, bin_files[i].addr);
@@ -93,7 +93,7 @@ void setup1() {
 
 // core1's loop: process usb host task on core1
 void loop1() {
-  if ( Brain.esp32_s3_inReset() ){
+  if (Brain.esp32_s3_inReset()) {
     // Note: S3 has an USB-OTG errata
     // https://www.espressif.com/sites/default/files/documentation/esp32-s3_errata_en.pdf
     // which is walkarounded by idf/arduino-esp32 to always mux JTAG to USB for
@@ -114,11 +114,10 @@ void loop1() {
 // TinyUSB Host callbacks
 // Note: running in the same core where Brain.USBHost.task() is called
 //--------------------------------------------------------------------+
-extern "C"  {
+extern "C" {
 
 // Invoked when device is mounted (configured)
-void tuh_mount_cb (uint8_t daddr)
-{
+void tuh_mount_cb(uint8_t daddr) {
   uint16_t vid, pid;
   tuh_vid_pid_get(daddr, &vid, &pid);
 
@@ -127,8 +126,7 @@ void tuh_mount_cb (uint8_t daddr)
 }
 
 /// Invoked when device is unmounted (bus reset/unplugged)
-void tuh_umount_cb(uint8_t dev_addr)
-{
+void tuh_umount_cb(uint8_t dev_addr) {
   (void) dev_addr;
   Brain.LCD_printf(1, "No USB Device");
 }

@@ -229,14 +229,12 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
   resetBootloader();
 
   bool synced = false;
-
   for (int retries = 0; !synced && (retries < 5); retries++) {
     Serial.println("Trying to sync");
     synced = sync();
     if (synced) {
       break;
     }
-
     delay(10);
   }
   if (!synced) {
