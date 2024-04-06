@@ -445,6 +445,24 @@ void Adafruit_TestBed::beepNblink(void) {
 #endif
 }
 
+/**************************************************************************/
+/*!
+    @brief light the LED for 500ms, if defined
+*/
+/**************************************************************************/
+void Adafruit_TestBed::blink(void) {
+  if (ledPin >= 0) {
+    pinMode(ledPin, OUTPUT);
+    digitalWrite(ledPin, HIGH);
+  }
+
+  delay(500);
+
+  if (ledPin >= 0) {
+    digitalWrite(ledPin, LOW);
+  }
+}
+
 //--------------------------------------------------------------------+
 // ESP32 Target
 //--------------------------------------------------------------------+

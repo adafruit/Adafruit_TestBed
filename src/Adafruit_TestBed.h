@@ -59,6 +59,7 @@ public:
 
   void beep(uint32_t freq, uint32_t duration);
   void beepNblink(void);
+  void blink(void);
 
   uint32_t timestamp(void);
   void printTimeTaken(bool restamp = false);
