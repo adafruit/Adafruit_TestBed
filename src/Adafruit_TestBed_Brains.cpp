@@ -434,7 +434,7 @@ size_t Adafruit_TestBed_Brains::dap_readFlash(const char *fpath, uint32_t addr,
     setLED(LOW);
 
     fsrc.write(buf, count);
-
+    LCD_printf("%d remaining", remain);
     addr += count;
     remain -= count;
   }
