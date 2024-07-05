@@ -19,11 +19,13 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+// https://docs.espressif.com/projects/esptool/en/latest/esp32/advanced-topics/serial-protocol.html
+
 #if defined(ARDUINO_RASPBERRY_PI_PICO) || defined(__SAMD51__) ||               \
     (defined(ARDUINO_ARCH_SAMD) && defined(ARM_MATH_CM0PLUS))
 
 #include "ESP32BootROM.h"
-#include "stub_esp32.h"
+#include "stub_esp.h"
 
 #ifdef USE_TINYUSB
 #include "Adafruit_TinyUSB.h"
@@ -252,36 +254,19 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
   Serial.printf("Chip Detect: 0x%08lX\r\n", _chip_detect);
 
   const esp32_stub_loader_t *stub = NULL;
-  switch (_chip_detect) {
-  case CHIP_DETECT_MAGIC_ESP32:
-    // only ESP32 have SUPPORTS_ENCRYPTED_FLASH = false
-    Serial.println("Found ESP32");
-    stub = &stub_esp32;
-    _supports_encrypted_flash = false;
-    break;
-  case CHIP_DETECT_MAGIC_ESP32S2:
-    Serial.println("Found ESP32-S2");
-    stub = &stub_esp32s2;
-    break;
-
-  case CHIP_DETECT_MAGIC_ESP32S3:
-    Serial.println("Found ESP32-S3");
-    stub = &stub_esp32s3;
-    break;
-
-  case CHIP_DETECT_MAGIC_ESP8266:
-    Serial.println("Found ESP8266");
-    stub = &stub_esp8266;
-    break;
-
-  default:
-    Serial.println("Found unknown ESP");
-    break;
+  for (uint32_t i = 0; i < ESP_STUB_COUNT; i++) {
+    if (stub_esp_arr[i]->chip_detect == _chip_detect) {
+      stub = stub_esp_arr[i];
+      break;
+    }
   }
 
   if (stub) {
+    Serial.printf("Found %s\r\n", stub->chip_name);
     VERIFY(uploadStub(stub));
     VERIFY(syncStub(3000));
+  } else {
+    Serial.println("Found unknown ESP chip");
   }
 
   if (baudrate != ESP_ROM_BAUD) {

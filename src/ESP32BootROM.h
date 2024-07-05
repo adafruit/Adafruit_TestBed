@@ -30,9 +30,11 @@ enum {
   CHIP_DETECT_MAGIC_ESP32S2 = 0x000007C6,
   CHIP_DETECT_MAGIC_ESP32S3 = 0x9,
   CHIP_DETECT_MAGIC_ESP8266 = 0xFFF0C101,
+  CHIP_DETECT_MAGIC_ESP32C6 = 0x2CE0806F,
 };
 
 typedef struct {
+  uint32_t chip_detect;
   uint32_t entry;
   uint32_t text_start;
   uint32_t text_length;
@@ -40,6 +42,7 @@ typedef struct {
   uint32_t data_start;
   uint32_t data_length;
   const uint8_t *data;
+  const char *chip_name;
 } esp32_stub_loader_t;
 
 class ESP32BootROMClass {
