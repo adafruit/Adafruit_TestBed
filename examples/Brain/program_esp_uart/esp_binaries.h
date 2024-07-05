@@ -28,11 +28,12 @@
 // Configuration: select which bins to flash
 #define BIN_FILES BIN_C6_BLINK_IO8
 
-//------------- Binaries Define -------------//
+//--------------------------------------------------------------------+
+// LIST OF BINARIES
+//--------------------------------------------------------------------+
 
-#define BIN_ESP32_NINA_1_7_4 0 // nina 1.7.4
-#define BIN_ESP32_WIFI_AP_SKETCH                                               \
-  1 // esp32 wifi accesspoint sketch with ssdi "YourAP"
+#define BIN_ESP32_NINA_1_7_4 0     // nina 1.7.4
+#define BIN_ESP32_WIFI_AP_SKETCH 1 // esp32 AP with ssdi "YourAP"
 
 #define BIN_FEATHER_S2 10 // Feather esp32s2 factory firmware
 #define BIN_FEATHER_S3 11 // Feather esp32s3 factory firmware
@@ -45,7 +46,9 @@
 
 #define BIN_C6_BLINK_IO8 40 // Blink sketch for C6 with LED on IO8
 
-//------------- Binaries include -------------//
+//--------------------------------------------------------------------+
+// Binaries include
+//--------------------------------------------------------------------+
 
 #if BIN_FILES == BIN_ESP32_WIFI_AP_SKETCH
 #include "esp_binaries/wifi_ap_binaries.h"
