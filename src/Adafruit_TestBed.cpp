@@ -1,5 +1,8 @@
 #include "Adafruit_TestBed.h"
 
+// change to 1 to skip pre-flash md5 check for testing
+#define SKIP_PRE_FLASH_MD5_CHECK 0
+
 static inline uint32_t div_ceil(uint32_t v, uint32_t d) {
   return (v + d - 1) / d;
 }
@@ -525,7 +528,7 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   // Check if MD5 matches to skip this file
   uint8_t esp_md5[16];
 
-#if 1 // change to 0 to skip pre-flash md5 check for testing
+#if !SKIP_PRE_FLASH_MD5_CHECK
   esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
   Serial.print("Flash MD5: ");
   print_buf(esp_md5, 16);

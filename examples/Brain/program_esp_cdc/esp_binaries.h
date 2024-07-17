@@ -26,15 +26,14 @@
 #define ESP_BINARIES_H_
 
 // Configuration: select which bins to flash
-#define BIN_FILES BIN_FEATHER_8266_BLINKY
+#define BIN_FILES BIN_C6_BLINK_IO8
 
 //--------------------------------------------------------------------+
 // LIST OF BINARIES
 //--------------------------------------------------------------------+
 
-#define BIN_ESP32_NINA_1_7_4 0 // nina 1.7.4
-#define BIN_ESP32_WIFI_AP_SKETCH                                               \
-  1 // esp32 wifi accesspoint sketch with ssdi "YourAP"
+#define BIN_ESP32_NINA_1_7_4 0        // nina 1.7.4
+#define BIN_ESP32_WIFI_AP_SKETCH 1    // esp32 AP with ssdi "YourAP"
 #define BIN_FEATHER_ESP32_V2_BLINKY 2 // Feather esp32 v2 blinky sketch
 
 #define BIN_FEATHER_S2 10 // Feather esp32s2 factory firmware
@@ -45,6 +44,8 @@
 #define BIN_DEVKIT_S3 21 // Espressif s3 devkit
 
 #define BIN_FEATHER_8266_BLINKY 30 // Feather esp8266 blinky sketch
+
+#define BIN_C6_BLINK_IO8 40 // Blink sketch for C6 with LED on IO8
 
 //--------------------------------------------------------------------+
 // Binaries include
@@ -76,6 +77,12 @@
 
 #elif BIN_FILES == BIN_FEATHER_8266_BLINKY
 #include "esp_binaries/feather_esp8266_blinky.h"
+
+#elif BIN_FILES == BIN_C6_BLINK_IO8
+#include "esp_binaries/c6_blink_io8.h"
+
+#else
+#error "Please select BIN_FILES in esp_binaries.h"
 
 #endif
 
@@ -128,8 +135,14 @@ struct {
 #elif BIN_FILES == BIN_FEATHER_8266_BLINKY
     {0x0000, &Blink_ino},
 
+#elif BIN_FILES == BIN_C6_BLINK_IO8
+    {0x00000, &c6_blink_io8_bootloader},
+    {0x8000, &c6_blink_io8_partitions},
+    {0xe000, &boot_app0},
+    {0x10000, &c6_blink_io8},
+
 #else
-#error bin_files[] not defined
+#error "Please select BIN_FILES in esp_binaries.h"
 #endif
 };
 
