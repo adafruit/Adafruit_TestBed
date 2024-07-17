@@ -217,13 +217,13 @@ bool Adafruit_TestBed_Brains::dap_begin(Adafruit_DAP *dp) {
                     dap_err_hanlder);
 }
 
-bool Adafruit_TestBed_Brains::dap_connect(void) {
+bool Adafruit_TestBed_Brains::dap_connect(uint32_t swj_clock) {
   if (!dap) {
     return false;
   }
 
   LCD_printf("Connecting...");
-  if (!dap->targetConnect()) {
+  if (!dap->targetConnect(swj_clock)) {
     return false;
   }
 

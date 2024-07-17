@@ -48,7 +48,7 @@ public:
 
   float readAnalogVoltage(uint16_t pin, float multiplier = 1);
   bool testAnalogVoltage(uint16_t pin, const char *name, float multiplier,
-                         float value);
+                         float value, uint8_t error = 10);
 
   bool testpins(uint8_t a, uint8_t b, uint8_t *allpins, uint8_t num_allpins);
 

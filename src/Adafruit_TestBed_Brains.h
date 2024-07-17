@@ -63,7 +63,7 @@ public:
   // DAP (samd21/51, nrf5x, stm32f4 etc..) Target
   //--------------------------------------------------------------------+
   bool dap_begin(Adafruit_DAP *dp);
-  bool dap_connect(void);
+  bool dap_connect(uint32_t swj_clock = 50);
   void dap_disconnect(void);
 
   bool dap_unprotectBoot(void);

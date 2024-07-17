@@ -215,11 +215,13 @@ float Adafruit_TestBed::readAnalogVoltage(uint16_t pin, float multiplier) {
     @param  name Human readable name for the pin
     @param  multiplier If there's a resistor divider, put the inverse here
     @param  value What voltage the pin should be
+    @param  error Percent of error permitted (10 is 10%)
     @return True if the pin voltage is within 10% of target
 */
 /**************************************************************************/
 bool Adafruit_TestBed::testAnalogVoltage(uint16_t pin, const char *name,
-                                         float multiplier, float value) {
+                                         float multiplier, float value,
+                                         uint8_t error) {
   float voltage = readAnalogVoltage(pin, multiplier);
   theSerial->print(name);
   theSerial->print(F(" output voltage: "));
@@ -227,11 +229,13 @@ bool Adafruit_TestBed::testAnalogVoltage(uint16_t pin, const char *name,
   theSerial->print(F(" V (should be "));
   theSerial->print(value);
   theSerial->print(" V)...");
-  if (abs(voltage - value) > (value / 10.0)) {
+  if (abs(voltage - value) > (value * error / 100.0)) {
     theSerial->println("Failed");
     return false;
   }
-  theSerial->println(F("OK within 10%"));
+  theSerial->print(F("OK within "));
+  theSerial->print(error);
+  theSerial->println("%");
 
   return true;
 }
