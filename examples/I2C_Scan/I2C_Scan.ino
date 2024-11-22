@@ -7,7 +7,7 @@ extern Adafruit_TestBed TB;
 #if defined(ARDUINO_ARCH_RP2040) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3_NOPSRAM) \
-    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3) \
+    || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3_N4R2) \
     || defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO) \
     || defined(ARDUINO_SAM_DUE) \
     || defined(ARDUINO_ARCH_RENESAS_UNO)
@@ -26,7 +26,7 @@ void setup() {
 
 #if defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) || \
     defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3_NOPSRAM) || \
-    defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3) || \
+    defined(ARDUINO_ADAFRUIT_QTPY_ESP32S3_N4R2) || \
     defined(ARDUINO_ADAFRUIT_QTPY_ESP32_PICO)
   // ESP32 is kinda odd in that secondary ports must be manually
   // assigned their pins with setPins()!
