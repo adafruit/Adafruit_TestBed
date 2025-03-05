@@ -24,7 +24,7 @@
 
 #ifdef ARDUINO_RASPBERRY_PI_PICO
 
-#include "SdFat.h"
+#include "SdFat_Adafruit_Fork.h"
 #include "pio_usb.h"
 
 #include "Adafruit_DAP.h"
@@ -133,8 +133,8 @@ bool Adafruit_TestBed_Brains::inited(void) { return _inited; }
 // RP2040 Target
 //--------------------------------------------------------------------+
 
-void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin,
-                                                        uint32_t reset_ms) {
+void Adafruit_TestBed_Brains::rp2_targetResetBootRom(int bootsel_pin,
+                                                     uint32_t reset_ms) {
   pinMode(bootsel_pin, OUTPUT);
   digitalWrite(bootsel_pin, LOW);
 
@@ -146,7 +146,41 @@ void Adafruit_TestBed_Brains::rp2040_targetResetBootRom(int bootsel_pin,
   pinMode(bootsel_pin, INPUT);
 }
 
-size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
+size_t Adafruit_TestBed_Brains::rp2_programUF2(const uint8_t *buffer,
+                                               size_t bufsize) {
+  size_t copied_bytes = 0;
+  const char *dst_name = "FIRMWARE.UF2";
+  File32 fdst = USBH_FS.open(dst_name, O_WRONLY | O_CREAT);
+
+  if (!fdst) {
+    Serial.printf("USBH_FS: cannot create file: %s\r\n", dst_name);
+  } else {
+    while (copied_bytes < bufsize) {
+      size_t count = bufsize - copied_bytes;
+      if (count > 4096) {
+        count = 4096; // write 1 sector each
+      }
+
+      setLED(HIGH);
+      size_t wr_count = fdst.write(buffer, count);
+      setLED(LOW);
+
+      buffer += wr_count;
+      copied_bytes += wr_count;
+
+      if (wr_count != count) {
+        Serial.println("USBH_FS: Failed to write file");
+        break;
+      }
+    }
+  }
+
+  fdst.close();
+
+  return copied_bytes;
+}
+
+size_t Adafruit_TestBed_Brains::rp2_programUF2(const char *fpath) {
   File32 fsrc = SD.open(fpath);
   if (!fsrc) {
     Serial.printf("SD: cannot open file: %s\r\n", fpath);
@@ -154,7 +188,6 @@ size_t Adafruit_TestBed_Brains::rp2040_programUF2(const char *fpath) {
   }
 
   size_t copied_bytes = 0;
-
   const char *dst_name = "FIRMWARE.UF2";
   File32 fdst = USBH_FS.open(dst_name, O_WRONLY | O_CREAT);
 
