@@ -9,7 +9,7 @@
 //   - There is no need to connect IO0/Reset since we will use DTR/RTS to reset ESP32
 
 // required for Host MSC block device
-#include "SdFat.h"
+#include "SdFat_Adafruit_Fork.h"
 
 // required for USB host
 #include "pio_usb.h"

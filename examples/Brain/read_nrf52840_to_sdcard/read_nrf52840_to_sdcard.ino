@@ -6,7 +6,7 @@
 // - Brain's USB host to Target USB
 
 // required for Host MSC block device
-#include "SdFat.h"
+#include "SdFat_Adafruit_Fork.h"
 
 // required for USB host
 #include "pio_usb.h"

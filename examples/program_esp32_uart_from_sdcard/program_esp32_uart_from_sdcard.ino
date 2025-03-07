@@ -20,7 +20,7 @@
  * from https://github.com/adafruit/nina-fw/releases/tag/1.7.5 in this example directory.
  */
 
-#include "SdFat.h"
+#include "SdFat_Adafruit_Fork.h"
 
 // #include "Adafruit_TinyUSB.h"
 #include "Adafruit_TestBed.h"

@@ -6,7 +6,7 @@
 // - Brain's USB host to RP2040 USB interface
 
 // required for Host MSC block device
-#include "SdFat.h"
+#include "SdFat_Adafruit_Fork.h"
 
 // required for USB host
 #include "pio_usb.h"
@@ -79,7 +79,7 @@ void setup() {
   Serial.println("Copying from SD to USBHFS: " UF2_FILE_PATH);
 
   uint32_t ms = millis();
-  size_t copied_bytes = Brain.rp2040_programUF2(UF2_FILE_PATH);
+  size_t copied_bytes = Brain.rp2_programUF2(UF2_FILE_PATH);
 
   print_speed(copied_bytes, millis() - ms);
 
@@ -104,7 +104,7 @@ void setup1() {
   Brain.LCD_printf(1, "No USB Device");
 
   // reset rp2040 target into Boot Rom, default bootsel = 28, reset duration = 10 ms
-  Brain.rp2040_targetResetBootRom();
+  Brain.rp2_targetResetBootRom();
 }
 
 // core1's loop: process usb host task on core1

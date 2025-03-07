@@ -6,7 +6,7 @@
 #include "Wire.h"
 
 #include "ESP32BootROM.h"
-#include "SdFat.h"
+#include "SdFat_Adafruit_Fork.h"
 
 #define RED 0xFF0000
 #define YELLOW 0xFFFF00

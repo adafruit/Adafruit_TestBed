@@ -3,7 +3,7 @@
 
 #ifdef ARDUINO_RASPBERRY_PI_PICO
 
-#include "SdFat.h"
+#include "SdFat_Adafruit_Fork.h"
 
 #include "Adafruit_TestBed.h"
 #include <LiquidCrystal.h>
@@ -49,15 +49,25 @@ public:
   bool usbh_mountFS(uint8_t dev_addr);
   bool usbh_umountFS(uint8_t dev_addr);
 
+  //--------------------------------------------------------------------+1
+  // RP2 (rp2040 and rp2350) Target
   //--------------------------------------------------------------------+
-  // RP2040 Target
-  //--------------------------------------------------------------------+
-  // reset rp2040 target to Boot ROM
-  void rp2040_targetResetBootRom(int bootsel_pin = 28, uint32_t reset_ms = 20);
+  // reset rp2 target to Boot ROM
+  void rp2_targetResetBootRom(int bootsel_pin = 28, uint32_t reset_ms = 20);
 
-  // program rp2040 target by copying UF2 file from SDCard
+  // program rp2 target by copying UF2 file stored in flash
+  size_t rp2_programUF2(const uint8_t *buffer, size_t bufsize);
+
+  // program rp2 target by copying UF2 file from SDCard
   // return number of copied bytes (typically uf2 file size)
-  size_t rp2040_programUF2(const char *fpath);
+  size_t rp2_programUF2(const char *fpath);
+
+  // backward compatibility
+  void rp2040_targetResetBootRom(int bootsel_pin = 28, uint32_t reset_ms = 20) {
+    rp2_targetResetBootRom(bootsel_pin, reset_ms);
+  }
+
+  size_t rp2040_programUF2(const char *fpath) { return rp2_programUF2(fpath); }
 
   //--------------------------------------------------------------------+
   // DAP (samd21/51, nrf5x, stm32f4 etc..) Target
