@@ -11,6 +11,9 @@ Adafruit_TestBed::Adafruit_TestBed(void) {
 #if defined(ADAFRUIT_METRO_M0_EXPRESS)
   neopixelPin = 40;
   neopixelNum = 1;
+#elif defined(ADAFRUIT_FEATHER_M0_EXPRESS)
+  neopixelPin = 8;
+  neopixelNum = 1;
 #endif
 
   esp32boot = NULL;
