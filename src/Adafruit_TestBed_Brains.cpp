@@ -34,6 +34,12 @@
 
 #define USBHOST_RHPORT 1
 
+// Workaround force F_CPU to 240MHz for programming RP2350 due to handshake
+// timeout
+#if F_CPU != 240000000L
+#error "F_CPU must be set to 240000000L for RP2350 programming"
+#endif
+
 Adafruit_TestBed_Brains Brain;
 
 volatile bool LCD_semaphore = false;
@@ -548,11 +554,15 @@ void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
 
   uint32_t const isr_context = save_and_disable_interrupts();
 
-  // RP2040 is 120 MHz, 120 cycle = 1us = 1000 ns
-  // Neopixel is 800 KHz, 1T = 1.25 us = 150 nop
+  // If F_CPU is
+  // - 120 MHz, 1 nop = 8.33 ns
+  // - 240 Mhz, 1 nop = 4.17 ns
+  // Neopixel is 800 KHz, 1T = 1.25 us = 150 nop (120Mhz), 300 nop (240Mhz)
+  // For simple calculation, below nop count is based on 120 Mhz. 240 Mhz is
+  // approximately x2
   while (1) {
     if (p & bitMask) {
-      // T1H 0,8 us = 96 - 1 = 95 nop
+      // T1H 0.8 us = 96 - 1 = 95 nop (without overhead)
       sio_hw->gpio_set = pinMask;
       __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
@@ -563,21 +573,46 @@ void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+#if F_CPU == 240000000L
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+#endif
 
-      // T1L 0,45 = 54 - 10 (ifelse) - 5 (overhead) = 44 nop
+      // T1L 0.45 = 54 - 10 (ifelse) - 5 (overhead) = 44 nop
       sio_hw->gpio_clr = pinMask;
       __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+#if F_CPU == 240000000L
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+#endif
+
     } else {
-      // T0H 0,4 us = 48 - 1 = 47 nop
+      // T0H 0.4 us = 48 - 1 = 47 nop
       sio_hw->gpio_set = pinMask;
       __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop;");
+#if F_CPU == 240000000L
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop;");
+#endif
 
       // T0L 0.85 us = 102 - 10 (ifelse) - 5 (overhead) = 87 nop
       sio_hw->gpio_clr = pinMask;
@@ -590,7 +625,22 @@ void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
                      "nop; nop; nop; nop;");
+#if F_CPU == 240000000L
+      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
+                     "nop; nop; nop; nop;");
+#endif
     }
+
+#if F_CPU == 240000000L
+    __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+#endif
 
     if (bitMask >>= 1) {
       // not full byte, shift to next bit
@@ -685,15 +735,14 @@ void Adafruit_TestBed_Brains::usbh_setVBus(bool en) {
 bool Adafruit_TestBed_Brains::usbh_begin(void) {
   // Check for CPU frequency, must be multiple of 120Mhz for bit-banging USB
   uint32_t cpu_hz = clock_get_hz(clk_sys);
-  if (cpu_hz != 120000000UL && cpu_hz != 240000000UL) {
+  if (cpu_hz % 12000000UL) {
     while (!Serial) {
       delay(10); // wait for native usb
     }
     Serial.printf("Error: CPU Clock = %lu, PIO USB require CPU clock must be "
-                  "multiple of 120 Mhz\r\n",
+                  "multiple of 12 Mhz\r\n",
                   cpu_hz);
-    Serial.printf("Change your CPU Clock to either 120 or 240 Mhz in Menu->CPU "
-                  "Speed \r\n");
+    Serial.println("Change your CPU Clock to 12*n Mhz in Menu->CPU Speed");
     while (1) {
       delay(1);
     }
