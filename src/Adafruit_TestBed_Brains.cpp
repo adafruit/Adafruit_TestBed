@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-#ifdef ARDUINO_RASPBERRY_PI_PICO
+#ifdef ARDUINO_ARCH_RP2040
 
 #include "SdFat_Adafruit_Fork.h"
 #include "pio_usb.h"
@@ -36,8 +36,8 @@
 
 // Workaround force F_CPU to 240MHz for programming RP2350 due to handshake
 // timeout
-#if F_CPU != 240000000L
-#error "F_CPU must be set to 240000000L for RP2350 programming"
+#if F_CPU != 120000000L && F_CPU != 240000000L
+#error "F_CPU must be set to either 120Mhz or 240Mhz for pio-usb host"
 #endif
 
 Adafruit_TestBed_Brains Brain;
@@ -514,6 +514,209 @@ bool Adafruit_TestBed_Brains::SD_begin(uint32_t max_clock) {
 //--------------------------------------------------------------------+
 // LCD
 //--------------------------------------------------------------------+
+#define NOP1 __asm volatile("nop");
+#define NOP2 NOP1 NOP1
+#define NOP3 NOP2 NOP1
+#define NOP4 NOP2 NOP2
+#define NOP5 NOP4 NOP1
+#define NOP6 NOP4 NOP2
+#define NOP7 NOP4 NOP3
+#define NOP8 NOP4 NOP4
+#define NOP9 NOP8 NOP1
+#define NOP10 NOP8 NOP2
+#define NOP11 NOP8 NOP3
+#define NOP12 NOP8 NOP4
+#define NOP13 NOP8 NOP5
+#define NOP14 NOP8 NOP6
+#define NOP15 NOP8 NOP7
+#define NOP16 NOP8 NOP8
+#define NOP17 NOP16 NOP1
+#define NOP18 NOP16 NOP2
+#define NOP19 NOP16 NOP3
+#define NOP20 NOP16 NOP4
+#define NOP21 NOP16 NOP5
+#define NOP22 NOP16 NOP6
+#define NOP23 NOP16 NOP7
+#define NOP24 NOP16 NOP8
+#define NOP25 NOP16 NOP9
+#define NOP26 NOP16 NOP10
+#define NOP27 NOP16 NOP11
+#define NOP28 NOP16 NOP12
+#define NOP29 NOP16 NOP13
+#define NOP30 NOP16 NOP14
+#define NOP31 NOP16 NOP15
+#define NOP32 NOP16 NOP16
+#define NOP33 NOP32 NOP1
+#define NOP34 NOP32 NOP2
+#define NOP35 NOP32 NOP3
+#define NOP36 NOP32 NOP4
+#define NOP37 NOP32 NOP5
+#define NOP38 NOP32 NOP6
+#define NOP39 NOP32 NOP7
+#define NOP40 NOP32 NOP8
+#define NOP41 NOP32 NOP9
+#define NOP42 NOP32 NOP10
+#define NOP43 NOP32 NOP11
+#define NOP44 NOP32 NOP12
+#define NOP45 NOP32 NOP13
+#define NOP46 NOP32 NOP14
+#define NOP47 NOP32 NOP15
+#define NOP48 NOP32 NOP16
+#define NOP49 NOP48 NOP1
+#define NOP50 NOP48 NOP2
+#define NOP51 NOP48 NOP3
+#define NOP52 NOP48 NOP4
+#define NOP53 NOP48 NOP5
+#define NOP54 NOP48 NOP6
+#define NOP55 NOP48 NOP7
+#define NOP56 NOP48 NOP8
+#define NOP57 NOP48 NOP9
+#define NOP58 NOP48 NOP10
+#define NOP59 NOP48 NOP11
+#define NOP60 NOP48 NOP12
+#define NOP61 NOP48 NOP13
+#define NOP62 NOP48 NOP14
+#define NOP63 NOP48 NOP15
+#define NOP64 NOP48 NOP16
+#define NOP65 NOP64 NOP1
+#define NOP66 NOP64 NOP2
+#define NOP67 NOP64 NOP3
+#define NOP68 NOP64 NOP4
+#define NOP69 NOP64 NOP5
+#define NOP70 NOP64 NOP6
+#define NOP71 NOP64 NOP7
+#define NOP72 NOP64 NOP8
+#define NOP73 NOP64 NOP9
+#define NOP74 NOP64 NOP10
+#define NOP75 NOP64 NOP11
+#define NOP76 NOP64 NOP12
+#define NOP77 NOP64 NOP13
+#define NOP78 NOP64 NOP14
+#define NOP79 NOP64 NOP15
+#define NOP80 NOP64 NOP16
+#define NOP81 NOP80 NOP1
+#define NOP82 NOP80 NOP2
+#define NOP83 NOP80 NOP3
+#define NOP84 NOP80 NOP4
+#define NOP85 NOP80 NOP5
+#define NOP86 NOP80 NOP6
+#define NOP87 NOP80 NOP7
+#define NOP88 NOP80 NOP8
+#define NOP89 NOP80 NOP9
+#define NOP90 NOP80 NOP10
+#define NOP91 NOP80 NOP11
+#define NOP92 NOP80 NOP12
+#define NOP93 NOP80 NOP13
+#define NOP94 NOP80 NOP14
+#define NOP95 NOP80 NOP15
+#define NOP96 NOP80 NOP16
+#define NOP97 NOP96 NOP1
+#define NOP98 NOP96 NOP2
+#define NOP99 NOP96 NOP3
+#define NOP100 NOP96 NOP4
+#define NOP101 NOP100 NOP1
+#define NOP102 NOP100 NOP2
+#define NOP103 NOP100 NOP3
+#define NOP104 NOP100 NOP4
+#define NOP105 NOP100 NOP5
+#define NOP106 NOP100 NOP6
+#define NOP107 NOP100 NOP7
+#define NOP108 NOP100 NOP8
+#define NOP109 NOP100 NOP9
+#define NOP110 NOP100 NOP10
+#define NOP111 NOP100 NOP11
+#define NOP112 NOP100 NOP12
+#define NOP113 NOP100 NOP13
+#define NOP114 NOP100 NOP14
+#define NOP115 NOP100 NOP15
+#define NOP116 NOP100 NOP16
+#define NOP117 NOP116 NOP1
+#define NOP118 NOP116 NOP2
+#define NOP119 NOP116 NOP3
+#define NOP120 NOP116 NOP4
+#define NOP121 NOP116 NOP5
+#define NOP122 NOP116 NOP6
+#define NOP123 NOP116 NOP7
+#define NOP124 NOP116 NOP8
+#define NOP125 NOP116 NOP9
+#define NOP126 NOP116 NOP10
+#define NOP127 NOP116 NOP11
+#define NOP128 NOP116 NOP12
+#define NOP129 NOP128 NOP1
+#define NOP130 NOP128 NOP2
+#define NOP131 NOP128 NOP3
+#define NOP132 NOP128 NOP4
+#define NOP133 NOP128 NOP5
+#define NOP134 NOP128 NOP6
+#define NOP135 NOP128 NOP7
+#define NOP136 NOP128 NOP8
+#define NOP137 NOP128 NOP9
+#define NOP138 NOP128 NOP10
+#define NOP139 NOP128 NOP11
+#define NOP140 NOP128 NOP12
+#define NOP141 NOP128 NOP13
+#define NOP142 NOP128 NOP14
+#define NOP143 NOP128 NOP15
+#define NOP144 NOP128 NOP16
+#define NOP145 NOP144 NOP1
+#define NOP146 NOP144 NOP2
+#define NOP147 NOP144 NOP3
+#define NOP148 NOP144 NOP4
+#define NOP149 NOP144 NOP5
+#define NOP150 NOP144 NOP6
+#define NOP151 NOP144 NOP7
+#define NOP152 NOP144 NOP8
+#define NOP153 NOP144 NOP9
+#define NOP154 NOP144 NOP10
+#define NOP155 NOP144 NOP11
+#define NOP156 NOP144 NOP12
+#define NOP157 NOP144 NOP13
+#define NOP158 NOP144 NOP14
+#define NOP159 NOP144 NOP15
+#define NOP160 NOP144 NOP16
+#define NOP161 NOP160 NOP1
+#define NOP162 NOP160 NOP2
+#define NOP163 NOP160 NOP3
+#define NOP164 NOP160 NOP4
+#define NOP165 NOP160 NOP5
+#define NOP166 NOP160 NOP6
+#define NOP167 NOP160 NOP7
+#define NOP168 NOP160 NOP8
+#define NOP169 NOP160 NOP9
+#define NOP170 NOP160 NOP10
+#define NOP171 NOP160 NOP11
+#define NOP172 NOP160 NOP12
+#define NOP173 NOP160 NOP13
+#define NOP174 NOP160 NOP14
+#define NOP175 NOP160 NOP15
+#define NOP176 NOP160 NOP16
+#define NOP177 NOP176 NOP1
+#define NOP178 NOP176 NOP2
+#define NOP179 NOP176 NOP3
+#define NOP180 NOP176 NOP4
+#define NOP181 NOP176 NOP5
+#define NOP182 NOP176 NOP6
+#define NOP183 NOP176 NOP7
+#define NOP184 NOP176 NOP8
+#define NOP185 NOP176 NOP9
+#define NOP186 NOP176 NOP10
+#define NOP187 NOP176 NOP11
+#define NOP188 NOP176 NOP12
+#define NOP189 NOP176 NOP13
+#define NOP190 NOP176 NOP14
+#define NOP191 NOP176 NOP15
+#define NOP192 NOP176 NOP16
+#define NOP193 NOP192 NOP1
+#define NOP194 NOP192 NOP2
+#define NOP195 NOP192 NOP3
+#define NOP196 NOP192 NOP4
+#define NOP197 NOP192 NOP5
+#define NOP198 NOP192 NOP6
+#define NOP199 NOP192 NOP7
+#define NOP200 NOP192 NOP8
+
+#define _NOP_COUNT(n) NOP##n
+#define NOP_COUNT(n) _NOP_COUNT(n)
 
 void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
     uint32_t color) {
@@ -554,97 +757,69 @@ void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
 
   uint32_t const isr_context = save_and_disable_interrupts();
 
-  // If F_CPU is
-  // - 120 MHz, 1 nop = 8.33 ns
-  // - 240 Mhz, 1 nop = 4.17 ns
-  // Neopixel is 800 KHz, 1T = 1.25 us = 150 nop (120Mhz), 300 nop (240Mhz)
-  // For simple calculation, below nop count is based on 120 Mhz. 240 Mhz is
-  // approximately x2
+  /* Neopixel is 800 KHz, 1T = 1.25 us = 150 nop (120Mhz), 300 nop (240Mhz)
+     - T1H = 0.8 us, T1L = 0.45 us
+     - T0H = 0.4 us, T0L = 0.85 us
+     If F_CPU is 120 MHz: 120 nop = 1us -> 1 nop = 8.33 ns
+     - T1H = 0.8 us = 96 nop, T1L = 0.45 us = 54 nop
+     - T0H = 0.4 us = 48 nop, T0L = 0.85 us = 102 nop
+     If F_CPU is 240 MHz: 240 nop = 1us -> 1 nop = 4.17 ns
+     - T1H = 0.8 us = 192 nop, T1L = 0.45 us = 108 nop
+     - T0H = 0.4 us = 96 nop, T0L = 0.85 us = 204 nop
+     Due to overhead the number of NOP is actually smaller, also M33 run faster
+     (higher IPC) therefore these are hand tuned,
+  */
+#if defined(ARDUINO_RASPBERRY_PI_PICO)
+// value for rp2040 at 120MHz
+#define T1H_CYCLE 90
+#define T1L_CYCLE 39
+#define T0H_CYCLE 42
+#define T0L_CYCLE 84
+#define LOOP_OVERHEAD_CYCLE 10 // overhead for if/else and loop
+#elif defined(ARDUINO_RASPBERRY_PI_PICO_2)
+// value for rp2350 at 120MHz
+#define T1H_CYCLE 190
+#define T1L_CYCLE 90
+#define T0H_CYCLE 88
+#define T0L_CYCLE 180
+#define LOOP_OVERHEAD_CYCLE 5
+#endif
+
   while (1) {
     if (p & bitMask) {
-      // T1H 0.8 us = 96 - 1 = 95 nop (without overhead)
+      // T1H 0.8 us = 96 nop (without overhead)
       sio_hw->gpio_set = pinMask;
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+      NOP_COUNT(T1H_CYCLE);
 #if F_CPU == 240000000L
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+      NOP_COUNT(T1H_CYCLE);
 #endif
 
       // T1L 0.45 = 54 - 10 (ifelse) - 5 (overhead) = 44 nop
       sio_hw->gpio_clr = pinMask;
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+      NOP_COUNT(T1L_CYCLE);
 #if F_CPU == 240000000L
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+      NOP_COUNT(T1L_CYCLE);
 #endif
 
     } else {
-      // T0H 0.4 us = 48 - 1 = 47 nop
+      // T0H 0.4 us = 48 cycles
       sio_hw->gpio_set = pinMask;
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop;");
+      NOP_COUNT(T0H_CYCLE);
 #if F_CPU == 240000000L
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop;");
+      NOP_COUNT(T0H_CYCLE);
 #endif
 
       // T0L 0.85 us = 102 - 10 (ifelse) - 5 (overhead) = 87 nop
       sio_hw->gpio_clr = pinMask;
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop;");
+      NOP_COUNT(T0L_CYCLE);
 #if F_CPU == 240000000L
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-                     "nop; nop; nop; nop;");
+      NOP_COUNT(T0L_CYCLE);
 #endif
     }
 
-#if F_CPU == 240000000L
-    __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-#endif
-
     if (bitMask >>= 1) {
       // not full byte, shift to next bit
-      __asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+      NOP_COUNT(LOOP_OVERHEAD_CYCLE);
     } else {
       // probably take 10 nops
       // if a full byte is sent, next to another byte
@@ -654,6 +829,9 @@ void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
       p = *ptr++;
       bitMask = 0x80;
     }
+#if F_CPU == 240000000L
+    NOP_COUNT(LOOP_OVERHEAD_CYCLE);
+#endif
   }
 
   restore_interrupts(isr_context);

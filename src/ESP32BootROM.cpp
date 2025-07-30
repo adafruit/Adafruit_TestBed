@@ -21,7 +21,7 @@
 
 // https://docs.espressif.com/projects/esptool/en/latest/esp32/advanced-topics/serial-protocol.html
 
-#if defined(ARDUINO_ARCH_RP2040) || defined(__SAMD51__) ||               \
+#if defined(ARDUINO_ARCH_RP2040) || defined(__SAMD51__) ||                     \
     defined(TARGET_RP2040) || defined(ARDUINO_ARCH_ESP32) ||                   \
     (defined(ARDUINO_ARCH_SAMD) && defined(ARM_MATH_CM0PLUS))
 
@@ -199,7 +199,7 @@ void ESP32BootROMClass::resetBootloader(void) {
     // IO0 high: done
     digitalWrite(_gpio0Pin, HIGH);
   }
-#if defined(USE_TINYUSB) && defined(ARDUINO_RASPBERRY_PI_PICO)
+#if defined(USE_TINYUSB) && defined(ARDUINO_ARCH_RP2040)
   else {
     // Serial Host using setDtrRts()
     // - DTR -> IO0
