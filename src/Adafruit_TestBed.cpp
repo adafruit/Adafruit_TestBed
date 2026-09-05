@@ -133,7 +133,7 @@ bool Adafruit_TestBed::scanI2CBus(byte addr, uint8_t post_delay) {
 void Adafruit_TestBed::printI2CBusScan(void) {
   theWire->begin();
   theSerial->print("I2C scan: ");
-  for (uint8_t addr = 0x00; addr <= 0x7F; addr++) {
+  for (uint8_t addr = 0x08; addr <= 0x7F; addr++) {
     theWire->beginTransmission(addr);
     if (theWire->endTransmission() == 0) {
       theSerial->print("0x");
