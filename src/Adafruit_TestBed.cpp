@@ -127,7 +127,7 @@ bool Adafruit_TestBed::scanI2CBus(byte addr, uint8_t post_delay) {
 
 /**************************************************************************/
 /*!
-    @brief  Perform a I2C scan for 0x00-0x7F and print results
+    @brief  Perform a I2C scan for 0x08-0x7F and print results
 */
 /**************************************************************************/
 void Adafruit_TestBed::printI2CBusScan(void) {
