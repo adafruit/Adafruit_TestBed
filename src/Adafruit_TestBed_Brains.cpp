@@ -769,20 +769,22 @@ void __no_inline_not_in_flash_func(Adafruit_TestBed_Brains::setColor)(
      Due to overhead the number of NOP is actually smaller, also M33 run faster
      (higher IPC) therefore these are hand tuned,
   */
-#if defined(ARDUINO_RASPBERRY_PI_PICO)
+#if defined(PICO_RP2040) || defined(ARDUINO_RASPBERRY_PI_PICO)
 // value for rp2040 at 120MHz
 #define T1H_CYCLE 90
 #define T1L_CYCLE 39
 #define T0H_CYCLE 42
 #define T0L_CYCLE 84
 #define LOOP_OVERHEAD_CYCLE 10 // overhead for if/else and loop
-#elif defined(ARDUINO_RASPBERRY_PI_PICO_2)
+#elif defined(PICO_RP2350) || defined(ARDUINO_RASPBERRY_PI_PICO_2)
 // value for rp2350 at 120MHz
 #define T1H_CYCLE 190
 #define T1L_CYCLE 90
 #define T0H_CYCLE 88
 #define T0L_CYCLE 180
 #define LOOP_OVERHEAD_CYCLE 5
+#else
+#error "Unsupported RP2040-family chip for NeoPixel bit-bang timing"
 #endif
 
   while (1) {
