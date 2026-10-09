@@ -53,9 +53,6 @@
     if (!(_cond)) {                                                            \
       Serial.printf("Failed at line %u", __LINE__);                            \
       Serial.flush();                                                          \
-      while (1) {                                                              \
-        delay(10);                                                             \
-      }                                                                        \
       return false;                                                            \
     }                                                                          \
   } while (0)
@@ -283,9 +280,9 @@ uint32_t ESP32BootROMClass::begin(unsigned long baudrate) {
 
   // use default spi connection if no stub
   if (!stub) {
-    while (!spiAttach()) {
+    if (!spiAttach()) {
       Serial.println("Failed to attach SPI");
-      delay(100);
+      return 0;
     }
   }
 
@@ -535,15 +532,15 @@ bool ESP32BootROMClass::syncStub(uint32_t timeout_ms) {
   Serial.println("Syncing stub...");
 
   if (!readSLIP(timeout_ms)) {
-    return -1;
+    return false;
   }
 
   if (4 != readBytes(buf, 4, timeout_ms)) {
-    return -1;
+    return false;
   }
 
   if (!readSLIP(timeout_ms)) {
-    return -1;
+    return false;
   }
 
   if (0 == memcmp(ohai, buf, 4)) {
@@ -570,7 +567,7 @@ bool ESP32BootROMClass::uploadStub(const esp32_stub_loader_t *stub) {
   while (remain) {
     uint32_t const len =
         (remain > ESP_RAM_BLOCK) ? (uint32_t)ESP_RAM_BLOCK : remain;
-    dataMem(buf, len);
+    VERIFY(dataMem(buf, len));
 
     buf += len;
     remain -= len;
@@ -585,7 +582,7 @@ bool ESP32BootROMClass::uploadStub(const esp32_stub_loader_t *stub) {
   while (remain) {
     uint32_t const len =
         (remain > ESP_RAM_BLOCK) ? (uint32_t)ESP_RAM_BLOCK : remain;
-    dataMem(buf, len);
+    VERIFY(dataMem(buf, len));
 
     buf += len;
     remain -= len;
