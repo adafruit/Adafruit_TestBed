@@ -529,15 +529,16 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   }
 
   // Check if MD5 matches to skip this file
-  uint8_t esp_md5[16];
+  uint8_t esp_md5[16] = {0};
 
 #if !SKIP_PRE_FLASH_MD5_CHECK
-  esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
-  Serial.print("Flash MD5: ");
-  print_buf(esp_md5, 16);
-  if (0 == memcmp(zfile->md5, esp_md5, 16)) {
-    Serial.println("MD5 matched");
-    return zfile->uncompressed_len;
+  if (esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5)) {
+    Serial.print("Flash MD5: ");
+    print_buf(esp_md5, 16);
+    if (0 == memcmp(zfile->md5, esp_md5, 16)) {
+      Serial.println("MD5 matched");
+      return zfile->uncompressed_len;
+    }
   }
 #endif
 
@@ -597,6 +598,7 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
       if (wr_count != fsrc->read(buf, wr_count)) {
         Serial.println("File contents does not matched with compressed_len");
         free(buf);
+        setLED(LOW);
         return 0;
       }
 
@@ -614,6 +616,15 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   }
   Serial.println();
 
+  if (buf) {
+    free(buf);
+  }
+  setLED(LOW);
+
+  if (written != zfile->compressed_len) {
+    return 0;
+  }
+
   // Stub only writes each block to flash after 'ack'ing the receive,
   // so do a final dummy operation which will not be 'ack'ed
   // until the last block has actually been written out to flash
@@ -624,7 +635,10 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
 
   //------------- MD5 verification -------------//
   Serial.println("Verifying MD5");
-  esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
+  if (!esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5)) {
+    Serial.println("Failed to read flash MD5");
+    return 0;
+  }
 
   if (0 == memcmp(zfile->md5, esp_md5, 16)) {
     Serial.println("MD5 matched");
@@ -636,10 +650,7 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
 
     Serial.print("ESP : ");
     print_buf(esp_md5, 16);
-  }
-
-  if (buf) {
-    free(buf);
+    return 0;
   }
 
   return zfile->uncompressed_len;
