@@ -67,7 +67,8 @@ public:
   //--------------------------------------------------------------------+
   // ESP32 Target
   //--------------------------------------------------------------------+
-  bool esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate);
+  bool esp32_begin(ESP32BootROMClass *bootrom, uint32_t baudrate,
+                   bool reset = true);
   void esp32_end(bool reset_esp = false);
 
   // program esp32 target with compressed data stored in internal flash

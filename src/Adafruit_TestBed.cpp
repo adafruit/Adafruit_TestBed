@@ -478,11 +478,12 @@ void Adafruit_TestBed::blink(void) {
 //--------------------------------------------------------------------+
 
 bool Adafruit_TestBed::esp32_begin(ESP32BootROMClass *bootrom,
-                                   uint32_t baudrate) {
+                                   uint32_t baudrate, bool reset) {
   esp32boot = bootrom;
+  _esp32_flash_defl = false;
 
   Serial.println("Syncing ESP32");
-  _esp32_chip_detect = esp32boot->begin(baudrate);
+  _esp32_chip_detect = esp32boot->begin(baudrate, reset);
 
   if (_esp32_chip_detect) {
     setColor(0xFFFFFF);
@@ -532,7 +533,10 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   uint8_t esp_md5[16];
 
 #if !SKIP_PRE_FLASH_MD5_CHECK
-  esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
+  if (!esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5)) {
+    Serial.println("Failed to read flash MD5");
+    return 0;
+  }
   Serial.print("Flash MD5: ");
   print_buf(esp_md5, 16);
   if (0 == memcmp(zfile->md5, esp_md5, 16)) {
@@ -606,7 +610,10 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
     // Note: flash deflat does not need padding
     if (!esp32boot->dataFlashDefl(data, wr_count)) {
       Serial.println("Failed to flash");
-      break;
+      if (buf) {
+        free(buf);
+      }
+      return 0;
     }
 
     written += wr_count;
@@ -624,7 +631,15 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
 
   //------------- MD5 verification -------------//
   Serial.println("Verifying MD5");
-  esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
+  bool md5_read = esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5);
+
+  if (buf) {
+    free(buf);
+  }
+  if (!md5_read) {
+    Serial.println("Failed to read flash MD5");
+    return 0;
+  }
 
   if (0 == memcmp(zfile->md5, esp_md5, 16)) {
     Serial.println("MD5 matched");
@@ -636,10 +651,7 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
 
     Serial.print("ESP : ");
     print_buf(esp_md5, 16);
-  }
-
-  if (buf) {
-    free(buf);
+    return 0;
   }
 
   return zfile->uncompressed_len;

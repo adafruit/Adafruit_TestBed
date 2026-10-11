@@ -24,6 +24,8 @@
 #include <Arduino.h>
 
 #define ESP32_DEFAULT_TIMEOUT 3000
+#define ESP32_ERASE_TIMEOUT_PER_MB 40000 ///< ROM erase timeout per MiB, in ms.
+#define ESP32_MD5_TIMEOUT_PER_MB 8000    ///< Flash MD5 timeout per MiB, in ms.
 
 enum {
   CHIP_DETECT_MAGIC_ESP32 = 0x00F01D83,
@@ -31,6 +33,20 @@ enum {
   CHIP_DETECT_MAGIC_ESP32S3 = 0x9,
   CHIP_DETECT_MAGIC_ESP8266 = 0xFFF0C101,
   CHIP_DETECT_MAGIC_ESP32C6 = 0x2CE0806F,
+  // P4 has no magic register: this is its GET_SECURITY_INFO chip ID.
+  CHIP_DETECT_MAGIC_ESP32P4 = 18,
+};
+
+enum {
+  ESP32P4_MAC_EFUSE_REG = 0x5012D044,      ///< P4 factory MAC address.
+  ESP32P4_REVISION_EFUSE_REG = 0x5012D04C, ///< P4 silicon revision.
+  ESP32P4_WDT_CONFIG_REG = 0x50116000,     ///< P4 RTC watchdog control.
+  ESP32P4_WDT_PROTECT_REG = 0x50116018, ///< P4 RTC watchdog write protection.
+  ESP32P4_SWD_CONFIG_REG = 0x5011601C,  ///< P4 super watchdog control.
+  ESP32P4_SWD_PROTECT_REG = 0x50116020, ///< P4 super watchdog write protection.
+  ESP32P4_WDT_UNLOCK_KEY = 0x50D83AA1,  ///< Watchdog write unlock key.
+  ESP32P4_SWD_AUTO_FEED =
+      0x00040000, ///< Automatically feed the super watchdog.
 };
 
 typedef struct {
@@ -51,11 +67,12 @@ public:
                     int resetnPin = -1);
 
   // return chip detect magic if success, otherwise 0
-  uint32_t begin(unsigned long baudrate);
+  uint32_t begin(unsigned long baudrate, bool reset = true);
   void end();
 
   bool isRunningStub(void);
   uint32_t getFlashWriteSize(void);
+  bool setFlashSize(uint32_t size);
 
   // High Level commands
   bool read_reg(uint32_t regAddr, uint32_t *regValue,
@@ -77,7 +94,9 @@ public:
 
 private:
   void init();
-  void resetBootloader(void);
+  bool resetBootloader(void);
+  bool prepareP4(void);
+  bool write_reg(uint32_t regAddr, uint32_t value);
   bool sync();
   bool uploadStub(const esp32_stub_loader_t *stub);
   bool syncStub(uint32_t timeout_ms);
@@ -85,12 +104,13 @@ private:
   // Command and Response
   void command(uint8_t opcode, const void *data, uint16_t length,
                const void *data2 = NULL, uint16_t len2 = 0);
-  int response(uint8_t opcode, uint32_t timeout_ms, void *body = NULL);
+  int response(uint8_t opcode, uint32_t timeout_ms, void *body = NULL,
+               uint16_t body_size = 0);
 
   bool sendCommandGetResponse(uint8_t opcode, const void *data, uint16_t length,
                               const void *data2 = NULL, uint16_t len2 = 0,
                               uint32_t timeout_ms = ESP32_DEFAULT_TIMEOUT,
-                              void *body = NULL);
+                              void *body = NULL, uint16_t body_size = 0);
 
   // High Level commands
   bool changeBaudrate(uint32_t baudrate);
