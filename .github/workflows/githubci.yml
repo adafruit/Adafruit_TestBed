@@ -40,5 +40,5 @@ jobs:
     - name: doxygen
       env:
         GH_REPO_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
-        PRETTYNAME : "Adafruit MSA301 Sensor Library"
+        PRETTYNAME : "Adafruit TestBed Library"
       run: bash ci/doxy_gen_and_deploy.sh
