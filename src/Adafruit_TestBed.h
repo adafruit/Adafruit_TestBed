@@ -16,12 +16,18 @@
 #define PURPLE 0xFF00FF
 #define WHITE 0xFFFFFF
 
+/**************************************************************************/
+/*!
+    @brief A deflate-compressed firmware image to program onto an ESP32 target
+*/
+/**************************************************************************/
 typedef struct {
-  const char *name;
-  const uint8_t *data;
-  const uint32_t compressed_len;
-  const uint32_t uncompressed_len;
-  const uint8_t md5[16];
+  const char *name;    ///< Name of the image file
+  const uint8_t *data; ///< Compressed contents in internal flash (unused when
+                       ///< streaming the image from an SD card file)
+  const uint32_t compressed_len;   ///< Size of the compressed image in bytes
+  const uint32_t uncompressed_len; ///< Size of the image once decompressed
+  const uint8_t md5[16];           ///< MD5 of the uncompressed image
 } esp32_zipfile_t;
 
 /**************************************************************************/
@@ -80,7 +86,7 @@ public:
   bool esp32_s3_inReset(void);
   void esp32_s3_clearReset(void);
 
-  ESP32BootROMClass *esp32boot; // ESP32 ROM
+  ESP32BootROMClass *esp32boot; ///< ESP32 ROM loader set by esp32_begin()
 
   //////////////////
   TwoWire *theWire = &Wire;    ///< The I2C port used in scanning

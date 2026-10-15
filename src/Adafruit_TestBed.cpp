@@ -170,6 +170,12 @@ void Adafruit_TestBed::targetPowerCycle(uint16_t off_time) {
   targetPower(1);
 }
 
+/**************************************************************************/
+/*!
+    @brief  Reset the target by pulling the target reset pin low
+    @param  reset_ms How many ms to hold the reset pin low
+*/
+/**************************************************************************/
 void Adafruit_TestBed::targetReset(uint32_t reset_ms) {
   digitalWrite(targetResetPin, LOW);
   delay(reset_ms);
@@ -477,6 +483,14 @@ void Adafruit_TestBed::blink(void) {
 // ESP32 Target
 //--------------------------------------------------------------------+
 
+/**************************************************************************/
+/*!
+    @brief  Put the ESP32 target into its ROM bootloader and sync with it
+    @param  bootrom The ESP32 ROM loader connected to the target
+    @param  baudrate Baudrate to switch to once synced
+    @return True if the target synced and was detected
+*/
+/**************************************************************************/
 bool Adafruit_TestBed::esp32_begin(ESP32BootROMClass *bootrom,
                                    uint32_t baudrate) {
   esp32boot = bootrom;
@@ -494,6 +508,14 @@ bool Adafruit_TestBed::esp32_begin(ESP32BootROMClass *bootrom,
   }
 }
 
+/**************************************************************************/
+/*!
+    @brief  Finish talking to the ESP32 target's loader
+    @param  reset_esp Passed as the flag of the final flash end command when
+            the stub loader is running, which leaves the loader to run the
+            flashed firmware
+*/
+/**************************************************************************/
 void Adafruit_TestBed::esp32_end(bool reset_esp) {
   if (esp32boot->isRunningStub()) {
     // skip sending flash_finish to ROM loader here,
@@ -510,8 +532,20 @@ void Adafruit_TestBed::esp32_end(bool reset_esp) {
   esp32boot->end();
 }
 
+/**************************************************************************/
+/*!
+    @brief  Check if an ESP32-S3 target has been reset by targetReset(), for
+            working around the S3 USB-OTG errata on the host side
+    @return True if the S3 target was reset and not yet cleared
+*/
+/**************************************************************************/
 bool Adafruit_TestBed::esp32_s3_inReset(void) { return _esp32s3_in_reset; }
 
+/**************************************************************************/
+/*!
+    @brief  Clear the ESP32-S3 reset flag set by targetReset()
+*/
+/**************************************************************************/
 void Adafruit_TestBed::esp32_s3_clearReset(void) { _esp32s3_in_reset = false; }
 
 static void print_buf(uint8_t const *buf, size_t len) {
@@ -655,11 +689,31 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
 
   return zfile->uncompressed_len;
 }
+/**************************************************************************/
+/*!
+    @brief  Program the ESP32 target with a compressed image stored in
+            internal flash, skipping it if the target's flash MD5 already
+            matches
+    @param  zfile The compressed image to program
+    @param  addr Target flash address to write the image to
+    @return Uncompressed size of the image on success, 0 on failure
+*/
+/**************************************************************************/
 size_t Adafruit_TestBed::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
                                                 uint32_t addr) {
   return _esp32_programFlashDefl_impl(zfile, addr, NULL);
 }
 
+/**************************************************************************/
+/*!
+    @brief  Program the ESP32 target with a compressed image read from an SD
+            card file, skipping it if the target's flash MD5 already matches
+    @param  zfile Sizes and MD5 of the compressed image
+    @param  addr Target flash address to write the image to
+    @param  fsrc Open file holding the compressed image contents
+    @return Uncompressed size of the image on success, 0 on failure
+*/
+/**************************************************************************/
 size_t Adafruit_TestBed::esp32_programFlashDefl(const esp32_zipfile_t *zfile,
                                                 uint32_t addr, File32 *fsrc) {
   return _esp32_programFlashDefl_impl(zfile, addr, fsrc);
