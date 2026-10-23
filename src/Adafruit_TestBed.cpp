@@ -533,6 +533,9 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   uint8_t esp_md5[16];
 
 #if !SKIP_PRE_FLASH_MD5_CHECK
+  if (esp32FlashProgress) {
+    esp32FlashProgress(ESP32_FLASH_CHECK, 0, 0);
+  }
   if (!esp32boot->md5Flash(addr, zfile->uncompressed_len, esp_md5)) {
     Serial.println("Failed to read flash MD5");
     return 0;
@@ -541,6 +544,9 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   print_buf(esp_md5, 16);
   if (0 == memcmp(zfile->md5, esp_md5, 16)) {
     Serial.println("MD5 matched");
+    if (esp32FlashProgress) {
+      esp32FlashProgress(ESP32_FLASH_COMPLETE, 0, 0);
+    }
     return zfile->uncompressed_len;
   }
 #endif
@@ -565,6 +571,9 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   Serial.print(" bytes to ");
   Serial.println(zfile->compressed_len);
 
+  if (esp32FlashProgress) {
+    esp32FlashProgress(ESP32_FLASH_ERASE, 0, 0);
+  }
   if (!esp32boot->beginFlashDefl(addr, zfile->uncompressed_len,
                                  zfile->compressed_len)) {
     Serial.println("beginFlash failed!");
@@ -580,6 +589,9 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
   uint32_t written = 0;
 
   uint32_t const block_num = div_ceil(zfile->compressed_len, block_size);
+  if (esp32FlashProgress) {
+    esp32FlashProgress(ESP32_FLASH_WRITE, 0, block_num);
+  }
   for (uint32_t i = 0; i < block_num; i++) {
     setLED(HIGH);
     // Serial.print("Pckt %lu/%lu", i + 1, block_num);
@@ -618,8 +630,15 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
 
     written += wr_count;
     setLED(LOW);
+    if (esp32FlashProgress) {
+      esp32FlashProgress(ESP32_FLASH_WRITE, i + 1, block_num);
+    }
   }
   Serial.println();
+
+  if (esp32FlashProgress) {
+    esp32FlashProgress(ESP32_FLASH_VERIFY, block_num, block_num);
+  }
 
   // Stub only writes each block to flash after 'ack'ing the receive,
   // so do a final dummy operation which will not be 'ack'ed
@@ -654,6 +673,9 @@ Adafruit_TestBed::_esp32_programFlashDefl_impl(const esp32_zipfile_t *zfile,
     return 0;
   }
 
+  if (esp32FlashProgress) {
+    esp32FlashProgress(ESP32_FLASH_COMPLETE, block_num, block_num);
+  }
   return zfile->uncompressed_len;
 }
 size_t Adafruit_TestBed::esp32_programFlashDefl(const esp32_zipfile_t *zfile,

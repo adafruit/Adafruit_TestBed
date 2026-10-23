@@ -24,6 +24,19 @@ typedef struct {
   const uint8_t md5[16];
 } esp32_zipfile_t;
 
+/** Stages reported by the optional ESP32 flash progress callback. */
+typedef enum {
+  ESP32_FLASH_CHECK,   ///< Check the existing image's MD5.
+  ESP32_FLASH_ERASE,   ///< Prepare flash for the new image.
+  ESP32_FLASH_WRITE,   ///< Transfer compressed packets.
+  ESP32_FLASH_VERIFY,  ///< Finish writing and verify the image's MD5.
+  ESP32_FLASH_COMPLETE ///< The image's MD5 matched.
+} esp32_flash_stage_t;
+
+/** Flash progress callback; completed and total count compressed packets. */
+typedef void (*esp32_flash_progress_cb_t)(esp32_flash_stage_t stage,
+                                          uint32_t completed, uint32_t total);
+
 /**************************************************************************/
 /*!
     @brief A helper class for making test beds and functions. Lots of handy lil
@@ -82,6 +95,8 @@ public:
   void esp32_s3_clearReset(void);
 
   ESP32BootROMClass *esp32boot; // ESP32 ROM
+  esp32_flash_progress_cb_t esp32FlashProgress =
+      NULL; ///< Optional synchronous progress callback; NULL disables it.
 
   //////////////////
   TwoWire *theWire = &Wire;    ///< The I2C port used in scanning
